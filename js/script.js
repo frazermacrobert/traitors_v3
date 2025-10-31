@@ -9,6 +9,47 @@ function weightedPick(items, weights, rng){
   return items[items.length-1];
 }
 
+// ---- Scenario normalizer (accepts both shapes) ----
+// Accepts either:
+// { options:[...], correct:"A|B|C", rationale_correct, rationale_wrong }
+// or:
+// { option_a:"", option_b:"", option_c:"", correct:"A|B|C", rationale_correct, rationale_wrong }
+function normalizeScenario(raw){
+  if(!raw) return null;
+
+  let options = Array.isArray(raw.options) ? raw.options.slice(0,3) : null;
+  if(!options){
+    options = [raw.option_a, raw.option_b, raw.option_c].filter(Boolean);
+  }
+  if(!options || options.length !== 3){
+    console.warn("Scenario skipped due to invalid options:", raw);
+    return null;
+  }
+
+  let correct = raw.correct;
+  if(typeof correct === "number"){
+    correct = ["A","B","C"][correct] || "A";
+  }
+  if(typeof correct === "string"){
+    correct = correct.trim().toUpperCase();
+    if(!["A","B","C"].includes(correct)) correct = "A";
+  }else{
+    correct = "A";
+  }
+
+  const rationale_correct = raw.rationale_correct || raw.rationaleCorrect || "Good call.";
+  const rationale_wrong   = raw.rationale_wrong   || raw.rationaleWrong   || "That creates risk — try again next time.";
+
+  return {
+    id: raw.id || "",
+    prompt: raw.prompt || "",
+    options,
+    correct,
+    rationale_correct,
+    rationale_wrong
+  };
+}
+
 const DIFF={Easy:{innocent_error:.04,traitor_rate:.50,influence_scale:.7,vote_noise:.05,pattern_clarity:1.0},Medium:{innocent_error:.12,traitor_rate:.40,influence_scale:.5,vote_noise:.12,pattern_clarity:.7},Hard:{innocent_error:.20,traitor_rate:.30,influence_scale:.3,vote_noise:.18,pattern_clarity:.5}};
 
 function defaultInfluence(d){const m={"CEO":.75,"CFO":.68,"Exec Assistant":.65,"Project Management":.62,"Consultant":.60,"Finance":.56,"HR":.56,"Legal":.56,"Design":.52,"Content":.52,"Motion":.52,"Ops":.54,"Marketing":.54,"Business Development":.54,"IT":.58};return m[d]??.55;}
@@ -19,7 +60,7 @@ const S={
   players:[],round:0,rng:Math.random,youId:null,traitors:new Set(),
   analysis:true,difficulty:"Medium",numTraitors:3,
   log:[], suspicion:{}, alive:new Set(), eliminated:new Set(), elimReason:{},
-  // NEW: anti-repetition state
+  // anti-repetition state
   usedActionIds: new Set(),           // per-round uniqueness
   history: {},                        // id -> recent action ids
   historyWindow: 3                    // cooldown length
@@ -32,9 +73,19 @@ async function loadData(){
     fetch('data/scenarios.json').then(r=>r.json()),
     fetch('data/elimination_msgs.json').then(r=>r.json()),
   ]);
-  S.allEmployees=emps; S.actions=acts; S.scenarios=scens; S.elimMsgs=elim;
+  S.allEmployees=emps; 
+  S.actions=acts; 
+  
+  // Normalize scenarios to a single internal shape
+  S.scenarios = (Array.isArray(scens)? scens: []).map(normalizeScenario).filter(Boolean);
+  if(!S.scenarios.length){
+    console.error("Scenario data error: 0 valid scenarios after normalization.");
+    alert("No valid scenarios found. Please check data/scenarios.json formatting.");
+  }
 
-  // validate buckets
+  S.elimMsgs=elim;
+
+  // validate action buckets
   const VALID=new Set(["safe","risky_innocent","traitor_sabotage","decoy","red_herring"]);
   const bad=S.actions.filter(a=>!VALID.has(a.bucket));
   if(bad.length) logLine(`Data warning: unknown action buckets -> ${bad.map(b=>b.id).join(', ')}`);
@@ -60,7 +111,9 @@ function startGame(){
     id:e.id, name:e.name, department:e.department,
     influence:defaultInfluence(e.department), behaviour:defaultBehaviour(e.department),
     role:"Innocent", status:"Alive",
-    avatar:`assets/pngs/${e.id}.png`, avatarSad:`assets/avatars/${e.id}-sad.svg`,
+    // NOTE: uses PNG for normal avatar (your custom art), and existing -sad variant path if you still use SVG; change to .png if needed.
+    avatar:`assets/pngs/${e.id}.png`,
+    avatarSad:`assets/avatars/${e.id}-sad.svg`,
   }));
   S.players.forEach(p=>{ S.alive.add(p.id); S.history[p.id]=[]; });
 
@@ -78,7 +131,7 @@ function startGame(){
 
 function nextRound(){
   if(checkEnd()) return;
-  // NEW: new round → clear per-round uniqueness and add light decay
+  // new round → clear per-round uniqueness and add light decay
   S.usedActionIds.clear();
   Object.keys(S.suspicion).forEach(id=> S.suspicion[id] = (S.suspicion[id]||0) * 0.9);
 
@@ -98,6 +151,7 @@ function checkEnd(){
 function doScenarioPhase(){
   const container=document.getElementById('scenario');
   const sc=S.scenarios[Math.floor(S.rng()*S.scenarios.length)];
+  if(!sc){ container.innerHTML=`<h2>Scenario</h2><div class="note">No scenarios available.</div>`; return; }
   container.innerHTML=`<h2>Scenario</h2>
     <div>${sc.prompt}</div>
     ${sc.options.map((opt,i)=>`<label class="option"><input type="radio" name="scopt" value="${String.fromCharCode(65+i)}"> <strong>${String.fromCharCode(65+i)}.</strong> ${opt}</label>`).join('')}
@@ -126,7 +180,6 @@ function doScenarioPhase(){
 function poolBy(bucket){ return S.actions.filter(a=>a.bucket===bucket); }
 function deptMatches(action, dept){
   if(!action.departments_hint) return false;
-  // action.departments_hint may be "A, B"
   return action.departments_hint.split(',').map(s=>s.trim().toLowerCase()).includes(dept.toLowerCase());
 }
 
@@ -151,7 +204,7 @@ function chooseActionFor(playerId, rng){
     : ["safe","decoy","risky_innocent","red_herring","traitor_sabotage"];
   const tryOrder=[...candidates, ...fallback.filter(b=>!candidates.includes(b))];
 
-  // Filter helpers
+  // Filter helpers (anti-repetition)
   const recent = new Set(S.history[playerId].slice(-S.historyWindow));
   function poolFilter(bucket){
     const pool = poolBy(bucket).filter(a=>!S.usedActionIds.has(a.id) && !recent.has(a.id));
@@ -211,7 +264,7 @@ function doActionsPhase(){
   doVotingPhase();
 }
 
-// ---------- Voting (unchanged except RNG normalization) ----------
+// ---------- Voting ----------
 function doVotingPhase(){
   const voting=document.getElementById('voting');
   voting.innerHTML=`<h2>Voting</h2>
