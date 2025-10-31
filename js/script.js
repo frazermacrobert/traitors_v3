@@ -50,10 +50,23 @@ function normalizeScenario(raw){
   };
 }
 
-const DIFF={Easy:{innocent_error:.04,traitor_rate:.50,influence_scale:.7,vote_noise:.05,pattern_clarity:1.0},Medium:{innocent_error:.12,traitor_rate:.40,influence_scale:.5,vote_noise:.12,pattern_clarity:.7},Hard:{innocent_error:.20,traitor_rate:.30,influence_scale:.3,vote_noise:.18,pattern_clarity:.5}};
+const DIFF={
+  Easy:{innocent_error:.04,traitor_rate:.50,influence_scale:.7,vote_noise:.05,pattern_clarity:1.0},
+  Medium:{innocent_error:.12,traitor_rate:.40,influence_scale:.5,vote_noise:.12,pattern_clarity:.7},
+  Hard:{innocent_error:.20,traitor_rate:.30,influence_scale:.3,vote_noise:.18,pattern_clarity:.5}
+};
 
-function defaultInfluence(d){const m={"CEO":.75,"CFO":.68,"Exec Assistant":.65,"Project Management":.62,"Consultant":.60,"Finance":.56,"HR":.56,"Legal":.56,"Design":.52,"Content":.52,"Motion":.52,"Ops":.54,"Marketing":.54,"Business Development":.54,"IT":.58};return m[d]??.55;}
-function defaultBehaviour(d){const b={safe:.7,risky:.2,decoy:.1};if(d==="Finance")return{safe:.6,risky:.3,decoy:.1};if(d==="Design"||d==="Content"||d==="Motion")return{safe:.65,risky:.2,decoy:.15};if(d==="Project Management")return{safe:.62,risky:.25,decoy:.13};return b;}
+function defaultInfluence(d){
+  const m={"CEO":.75,"CFO":.68,"Exec Assistant":.65,"Project Management":.62,"Consultant":.60,"Finance":.56,"HR":.56,"Legal":.56,"Design":.52,"Content":.52,"Motion":.52,"Ops":.54,"Marketing":.54,"Business Development":.54,"IT":.58};
+  return m[d]??.55;
+}
+function defaultBehaviour(d){
+  const b={safe:.7,risky:.2,decoy:.1};
+  if(d==="Finance")return{safe:.6,risky:.3,decoy:.1};
+  if(d==="Design"||d==="Content"||d==="Motion")return{safe:.65,risky:.2,decoy:.15};
+  if(d==="Project Management")return{safe:.62,risky:.25,decoy:.13};
+  return b;
+}
 
 const S={
   allEmployees:[],actions:[],scenarios:[],elimMsgs:{},
@@ -114,12 +127,14 @@ function startGame(){
     // NOTE: uses PNG for normal avatar (your custom art), and existing -sad variant path if you still use SVG; change to .png if needed.
     avatar:`assets/pngs/${e.id}.png`,
     avatarSad:`assets/avatars/${e.id}-sad.svg`,
+    // Optional traitor variant to reveal on loss (swap path/extension to your preference)
+    avatarTraitor:`assets/pngs/${e.id}-traitor.png`
   }));
   S.players.forEach(p=>{ S.alive.add(p.id); S.history[p.id]=[]; });
 
   // Assign traitors among bots (exclude you)
   const botIds=S.players.map(p=>p.id).filter(id=>id!==S.youId);
-  seededShuffle(botIds, S.rng).slice(0, S.numTraitors).forEach(id=>S.traitors.add(id));
+  seededShuffle(botIds,S.rng).slice(0,S.numTraitors).forEach(id=>S.traitors.add(id));
   S.players.forEach(p=>{ if(S.traitors.has(p.id)) p.role="Traitor"; });
 
   S.players.forEach(p=>S.suspicion[p.id]=0);
@@ -142,9 +157,24 @@ function nextRound(){
 function checkEnd(){
   const alivePlayers=[...S.alive].map(id=>S.players.find(p=>p.id===id));
   const aliveTraitors=alivePlayers.filter(p=>S.traitors.has(p.id)).length;
-  if(!S.alive.has(S.youId)){ announce(`You were eliminated. Traitors win.`); return true; }
-  if(aliveTraitors===0){ announce(`All traitors eliminated. You win!`); return true; }
-  if(aliveTraitors >= (alivePlayers.length - aliveTraitors)){ announce(`Traitors took control. You lose.`); return true; }
+
+  // You were eliminated -> loss
+  if(!S.alive.has(S.youId)){
+    revealTraitors(); // NEW: visually reveal traitors on player loss
+    announce(`You were eliminated. Traitors win.`);
+    return true;
+  }
+  // All traitors gone -> win
+  if(aliveTraitors===0){
+    announce(`All traitors eliminated. You win!`);
+    return true;
+  }
+  // Traitors take control -> loss
+  if(aliveTraitors >= (alivePlayers.length - aliveTraitors)){
+    revealTraitors(); // NEW: visually reveal traitors on loss
+    announce(`Traitors took control. You lose.`);
+    return true;
+  }
   return false;
 }
 
@@ -445,3 +475,28 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   };
   window.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ document.getElementById('logModal').classList.remove('open'); }});
 });
+
+// ---------- Reveal traitors on loss (outline + optional image swap) ----------
+function revealTraitors(){
+  S.players.forEach(p=>{
+    if(!S.traitors.has(p.id)) return;
+    const card=document.querySelector(`.player-card[data-id="${p.id}"]`);
+    if(!card) return;
+    // Add a CSS class for red outline (define in CSS) or fall back to inline style
+    card.classList.add('revealed-traitor');
+    if(!document.querySelector('style[data-traitor-reveal]')){
+      const st=document.createElement('style'); st.setAttribute('data-traitor-reveal','');
+      st.textContent=`
+        .player-card.revealed-traitor{outline:3px solid var(--red);box-shadow:0 0 0 4px rgba(204,31,42,.15);}
+      `;
+      document.head.appendChild(st);
+    }
+    // Try to swap to traitor avatar; if it 404s, revert to original
+    const img=card.querySelector('img');
+    if(img && p.avatarTraitor){
+      const originalSrc=img.src;
+      img.onerror=()=>{ img.onerror=null; img.src=originalSrc; };
+      img.src=p.avatarTraitor;
+    }
+  });
+}
