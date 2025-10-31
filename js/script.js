@@ -60,7 +60,7 @@ function startGame(){
     id:e.id, name:e.name, department:e.department,
     influence:defaultInfluence(e.department), behaviour:defaultBehaviour(e.department),
     role:"Innocent", status:"Alive",
-    avatar:`assets/avatars/${e.id}.svg`, avatarSad:`assets/avatars/${e.id}-sad.svg`,
+    avatar:`assets/pngs/${e.id}.png`, avatarSad:`assets/avatars/${e.id}-sad.svg`,
   }));
   S.players.forEach(p=>{ S.alive.add(p.id); S.history[p.id]=[]; });
 
