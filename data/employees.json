@@ -1,0 +1,187 @@
+[
+  {
+    "id": "frazer-consultant-1",
+    "name": "Frazer",
+    "department": "Consultant"
+  },
+  {
+    "id": "al-consultant-1",
+    "name": "Al",
+    "department": "Consultant"
+  },
+  {
+    "id": "hayley-consultant-1",
+    "name": "Hayley",
+    "department": "Consultant"
+  },
+  {
+    "id": "gonzalo-consultant-1",
+    "name": "Gonzalo",
+    "department": "Consultant"
+  },
+  {
+    "id": "lucy-consultant-1",
+    "name": "Lucy",
+    "department": "Consultant"
+  },
+  {
+    "id": "rachel-consultant-1",
+    "name": "Rachel",
+    "department": "Consultant"
+  },
+  {
+    "id": "jo-consultant-1",
+    "name": "Jo",
+    "department": "Consultant"
+  },
+  {
+    "id": "alex-consultant-1",
+    "name": "Alex",
+    "department": "Consultant"
+  },
+  {
+    "id": "lucy-consultant-2",
+    "name": "Lucy",
+    "department": "Consultant"
+  },
+  {
+    "id": "cass-project-management-1",
+    "name": "Cass",
+    "department": "Project Management"
+  },
+  {
+    "id": "alex-project-management-1",
+    "name": "Alex",
+    "department": "Project Management"
+  },
+  {
+    "id": "rachael-project-management-1",
+    "name": "Rachael",
+    "department": "Project Management"
+  },
+  {
+    "id": "sam-project-management-1",
+    "name": "Sam",
+    "department": "Project Management"
+  },
+  {
+    "id": "jake-project-management-1",
+    "name": "Jake",
+    "department": "Project Management"
+  },
+  {
+    "id": "craig-design-1",
+    "name": "Craig",
+    "department": "Design"
+  },
+  {
+    "id": "ak-design-1",
+    "name": "AK",
+    "department": "Design"
+  },
+  {
+    "id": "pete-design-1",
+    "name": "Pete",
+    "department": "Design"
+  },
+  {
+    "id": "josh-design-1",
+    "name": "Josh",
+    "department": "Design"
+  },
+  {
+    "id": "pip-design-1",
+    "name": "Pip",
+    "department": "Design"
+  },
+  {
+    "id": "jonny-design-1",
+    "name": "Jonny",
+    "department": "Design"
+  },
+  {
+    "id": "chris-design-1",
+    "name": "Chris",
+    "department": "Design"
+  },
+  {
+    "id": "russ-design-1",
+    "name": "Russ",
+    "department": "Design"
+  },
+  {
+    "id": "miles-motion-1",
+    "name": "Miles",
+    "department": "Motion"
+  },
+  {
+    "id": "emily-motion-1",
+    "name": "Emily",
+    "department": "Motion"
+  },
+  {
+    "id": "ste-content-1",
+    "name": "Ste",
+    "department": "Content"
+  },
+  {
+    "id": "lucy-content-1",
+    "name": "Lucy",
+    "department": "Content"
+  },
+  {
+    "id": "charlie-content-1",
+    "name": "Charlie",
+    "department": "Content"
+  },
+  {
+    "id": "ro-ceo-1",
+    "name": "Ro",
+    "department": "CEO"
+  },
+  {
+    "id": "mark-cfo-1",
+    "name": "Mark",
+    "department": "CFO"
+  },
+  {
+    "id": "kay-ops-1",
+    "name": "Kay",
+    "department": "Ops"
+  },
+  {
+    "id": "shelley-hr-1",
+    "name": "Shelley",
+    "department": "HR"
+  },
+  {
+    "id": "lisa-finance-1",
+    "name": "Lisa",
+    "department": "Finance"
+  },
+  {
+    "id": "nats-finance-1",
+    "name": "Nats",
+    "department": "Finance"
+  },
+  {
+    "id": "sue-exec-assistant-1",
+    "name": "Sue",
+    "department": "Exec Assistant"
+  },
+  {
+    "id": "bibs-ops-1",
+    "name": "Bibs",
+    "department": "Ops"
+  },
+  {
+    "id": "emma-marketing-1",
+    "name": "Emma",
+    "department": "Marketing"
+  },
+  {
+    "id": "memo-business-development-1",
+    "name": "Memo",
+    "department": "Business Development"
+  }
+]

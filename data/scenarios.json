@@ -1,0 +1,38 @@
+[
+  {
+    "id": "S-001",
+    "prompt": "You\u2019re in the shared London building. A courier asks to be buzzed in for 'the agency upstairs.' What do you do?",
+    "options": [
+      "Buzz them in \u2014 they probably mean us.",
+      "Ask who they\u2019re delivering to and confirm via reception.",
+      "Hold the door and let them pass."
+    ],
+    "correct": "B",
+    "rationale_correct": "Verifying the recipient prevents tailgating/unauthorised entry.",
+    "rationale_wrong": "Politeness isn\u2019t a control. Always verify through a trusted path."
+  },
+  {
+    "id": "S-002",
+    "prompt": "A Teams message from 'IT Support' asks for your password to fix login issues.",
+    "options": [
+      "Provide the password so they can help.",
+      "Ask for a ticket and validate via the official IT portal.",
+      "Ignore it; IT never messages by Teams."
+    ],
+    "correct": "B",
+    "rationale_correct": "Re-initiate via a trusted channel and never share passwords.",
+    "rationale_wrong": "Ignoring forever isn\u2019t best; validate before acting."
+  },
+  {
+    "id": "S-003",
+    "prompt": "A client can\u2019t access SharePoint and asks for the files urgently.",
+    "options": [
+      "Email a public Dropbox link.",
+      "Ask IT to enable secure guest access.",
+      "Paste files into a Teams chat."
+    ],
+    "correct": "B",
+    "rationale_correct": "Stick to approved platforms with controlled access.",
+    "rationale_wrong": "Convenience shouldn\u2019t override access control."
+  }
+]

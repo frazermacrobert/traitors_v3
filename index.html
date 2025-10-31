@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Who Let the Hack In? · Scarlettabbott</title><link rel="stylesheet" href="css/style.css"></head>
+<body>
+<div class="app">
+  <div class="header">
+    <div><div class="badge">Scarlettabbott · Cyber Game Prototype</div><h1 class="title">Who Let the Hack In?</h1></div>
+    <button id="restartBtn" class="btn secondary">Restart</button>
+  </div>
+
+  <div id="topbar" class="topbar" aria-label="Players"></div>
+
+  <div class="grid">
+    <div>
+      <div id="roundInfo" class="section"></div>
+      <div id="scenario" class="section"></div>
+      <div id="voting" class="section"></div>
+    </div>
+    <div id="actions" class="section"></div>
+  </div>
+</div>
+
+<!-- Game Log Modal -->
+<div class="modal" id="logModal" role="dialog" aria-modal="true" aria-label="Game Log">
+  <div class="dialog">
+    <button class="btn secondary close" id="closeLog">Close</button>
+    <h2>Game Log</h2>
+    <div id="logBody" class="note" style="max-height:60vh; overflow:auto"></div>
+  </div>
+</div>
+
+<!-- Start Modal -->
+<div class="modal open" id="startModal" role="dialog" aria-modal="true">
+  <div class="dialog">
+    <h2 style="margin-top:0">New Game</h2>
+    <div class="row" style="display:flex;gap:10px;flex-wrap:wrap">
+      <label>Choose your character<br><select id="playerSelect"></select></label>
+      <label>Difficulty<br><select id="difficulty"><option>Easy</option><option selected>Medium</option><option>Hard</option></select></label>
+      <label>Traitors<br><input id="numTraitors" type="number" min="1" max="5" value="3"></label>
+      <label>Analysis Mode<br><select id="analysisMode"><option value="true" selected>On</option><option value="false">Off</option></select></label>
+      <label>Seed (optional)<br><input id="seed" type="text" placeholder="e.g. 42"></label>
+    </div><hr>
+    <div class="footer" style="display:flex;justify-content:space-between;align-items:center">
+      <div class="note">10 total players (you + 9 bots). Traitors are assigned from bots.</div>
+      <button id="startBtn" class="btn">Start</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/script.js"></script></body></html>
