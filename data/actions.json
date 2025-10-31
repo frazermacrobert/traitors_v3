@@ -1,5 +1,5 @@
 [
-  // --- SAFE (20) ---
+  
   {"id":"A-001","bucket":"safe","description":"Updated the client project tracker in Synergist","risk_level":0,"actually_suspicious":false,"departments_hint":"Project Management"},
   {"id":"A-002","bucket":"safe","description":"Scheduled a client status call and shared the agenda via Teams","risk_level":0,"actually_suspicious":false,"departments_hint":"Account Management"},
   {"id":"A-003","bucket":"safe","description":"Used the company VPN while working from home","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
@@ -21,7 +21,7 @@
   {"id":"A-019","bucket":"safe","description":"Verified client contact identity on video call before access change","risk_level":0,"actually_suspicious":false,"departments_hint":"IT, Client Services"},
   {"id":"A-020","bucket":"safe","description":"Cleaned inbox of old attachments and confidential files","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
 
-  // --- RISKY BUT INNOCENT (15) ---
+  
   {"id":"A-101","bucket":"risky_innocent","description":"Shared a link to a Teams folder with 'Anyone with the link' permissions","risk_level":1,"actually_suspicious":false,"departments_hint":"Client Services"},
   {"id":"A-102","bucket":"risky_innocent","description":"Forwarded a client’s email chain to personal inbox to finish work on the train","risk_level":2,"actually_suspicious":false,"departments_hint":"All"},
   {"id":"A-103","bucket":"risky_innocent","description":"Accepted a LinkedIn connection from someone claiming to work at a client brand","risk_level":2,"actually_suspicious":false,"departments_hint":"Account Management"},
@@ -38,7 +38,7 @@
   {"id":"A-114","bucket":"risky_innocent","description":"Joined an online webinar using the same password as work account","risk_level":2,"actually_suspicious":false,"departments_hint":"All"},
   {"id":"A-115","bucket":"risky_innocent","description":"Sent internal slides to a partner’s Gmail for feedback","risk_level":3,"actually_suspicious":false,"departments_hint":"Marketing"},
 
-  // --- DECOY (10) ---
+ 
   {"id":"A-201","bucket":"decoy","description":"Got an email about an 'urgent GDPR update' and reported it to IT","risk_level":1,"actually_suspicious":false,"departments_hint":"All"},
   {"id":"A-202","bucket":"decoy","description":"Found a USB stick in the office and turned it in unopened","risk_level":0,"actually_suspicious":false,"departments_hint":"Office Admin"},
   {"id":"A-203","bucket":"decoy","description":"Was added to a suspicious 'Creative Assets' group and raised it","risk_level":1,"actually_suspicious":false,"departments_hint":"Creative"},
@@ -50,7 +50,7 @@
   {"id":"A-209","bucket":"decoy","description":"Spotted inconsistent branding in a supplier email and reported it","risk_level":1,"actually_suspicious":false,"departments_hint":"Procurement"},
   {"id":"A-210","bucket":"decoy","description":"Declined to share login over phone with someone claiming urgency","risk_level":1,"actually_suspicious":false,"departments_hint":"All"},
 
-  // --- TRAITOR SABOTAGE (10) ---
+ 
   {"id":"A-301","bucket":"traitor_sabotage","description":"Set up an external SharePoint and granted full access to 'client' Gmail","risk_level":3,"actually_suspicious":true,"departments_hint":"Client Services"},
   {"id":"A-302","bucket":"traitor_sabotage","description":"Installed an 'AI transcription' browser extension that records calls","risk_level":2,"actually_suspicious":true,"departments_hint":"Communications"},
   {"id":"A-303","bucket":"traitor_sabotage","description":"Forwarded internal files to 'CEO Assistant' from spoofed domain","risk_level":3,"actually_suspicious":true,"departments_hint":"All"},
@@ -62,7 +62,7 @@
   {"id":"A-309","bucket":"traitor_sabotage","description":"Opened a phishing link disguised as an internal HR update","risk_level":3,"actually_suspicious":true,"departments_hint":"HR"},
   {"id":"A-310","bucket":"traitor_sabotage","description":"Deleted audit logs to hide suspicious activity","risk_level":3,"actually_suspicious":true,"departments_hint":"IT"},
 
-  // --- RED HERRINGS (8) ---
+
   {"id":"A-401","bucket":"red_herring","description":"Does a presentation on smart new AI tech (informational only)","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
   {"id":"A-402","bucket":"red_herring","description":"Forgets laptop at home and spends day working offline","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
   {"id":"A-403","bucket":"red_herring","description":"Phones in ill and does not log on","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
