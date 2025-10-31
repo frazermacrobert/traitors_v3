@@ -1,38 +1,302 @@
 [
   {
     "id": "S-001",
-    "prompt": "You\u2019re in the shared London building. A courier asks to be buzzed in for 'the agency upstairs.' What do you do?",
-    "options": [
-      "Buzz them in \u2014 they probably mean us.",
-      "Ask who they\u2019re delivering to and confirm via reception.",
-      "Hold the door and let them pass."
-    ],
+    "prompt": "A courier says they need urgent access to deliver equipment for IT.",
+    "option_a": "Let them in and show them to the IT area.",
+    "option_b": "Ask who they're delivering to and confirm with IT via reception.",
+    "option_c": "Ignore them and continue working.",
     "correct": "B",
-    "rationale_correct": "Verifying the recipient prevents tailgating/unauthorised entry.",
-    "rationale_wrong": "Politeness isn\u2019t a control. Always verify through a trusted path."
+    "rationale_correct": "Always verify with the intended recipient or reception before granting access.",
+    "rationale_wrong": "Tailgating and impersonation are common physical social engineering tactics."
   },
   {
     "id": "S-002",
-    "prompt": "A Teams message from 'IT Support' asks for your password to fix login issues.",
-    "options": [
-      "Provide the password so they can help.",
-      "Ask for a ticket and validate via the official IT portal.",
-      "Ignore it; IT never messages by Teams."
-    ],
+    "prompt": "You receive an email marked 'Urgent Payroll Correction' asking you to confirm your bank details.",
+    "option_a": "Click the link and update details immediately.",
+    "option_b": "Forward the email to IT and wait for guidance.",
+    "option_c": "Reply asking if the email is real.",
     "correct": "B",
-    "rationale_correct": "Re-initiate via a trusted channel and never share passwords.",
-    "rationale_wrong": "Ignoring forever isn\u2019t best; validate before acting."
+    "rationale_correct": "Forward suspicious emails using the official phishing report method.",
+    "rationale_wrong": "Never click or reply directly to unknown or suspicious senders."
   },
   {
     "id": "S-003",
-    "prompt": "A client can\u2019t access SharePoint and asks for the files urgently.",
-    "options": [
-      "Email a public Dropbox link.",
-      "Ask IT to enable secure guest access.",
-      "Paste files into a Teams chat."
-    ],
+    "prompt": "A colleague on Teams asks for your login to access a shared folder while IT is offline.",
+    "option_a": "Share your login to help them meet the deadline.",
+    "option_b": "Suggest they log a ticket with IT instead.",
+    "option_c": "Ignore them completely.",
     "correct": "B",
-    "rationale_correct": "Stick to approved platforms with controlled access.",
-    "rationale_wrong": "Convenience shouldn\u2019t override access control."
+    "rationale_correct": "Never share passwords. Always use official access or ticket systems.",
+    "rationale_wrong": "Account sharing breaches policy and opens vulnerabilities."
+  },
+  {
+    "id": "S-004",
+    "prompt": "While travelling, you need to send client files but only have access to café Wi-Fi.",
+    "option_a": "Send the files using the café Wi-Fi — it's password protected.",
+    "option_b": "Use your mobile hotspot or VPN connection to send them.",
+    "option_c": "Wait until you're back in the office to send them.",
+    "correct": "B",
+    "rationale_correct": "Use secure connections like VPNs or mobile hotspots for sensitive work.",
+    "rationale_wrong": "Public Wi-Fi can be intercepted even if it has a password."
+  },
+  {
+    "id": "S-005",
+    "prompt": "You see an AI plugin that claims to automate meeting notes.",
+    "option_a": "Install it to save time.",
+    "option_b": "Ask IT if the tool is approved before installing.",
+    "option_c": "Ignore it; you don’t need notes.",
+    "correct": "B",
+    "rationale_correct": "Only approved AI tools should process business or client data.",
+    "rationale_wrong": "Unverified AI tools can leak sensitive information."
+  },
+  {
+    "id": "S-006",
+    "prompt": "A supplier sends an invoice from a slightly different domain than usual.",
+    "option_a": "Pay it to avoid late fees.",
+    "option_b": "Call your finance contact using known details to confirm.",
+    "option_c": "Reply to the sender for clarification.",
+    "correct": "B",
+    "rationale_correct": "Always verify changes using official contact info, not reply-to addresses.",
+    "rationale_wrong": "Domain spoofing is a classic business email compromise tactic."
+  },
+  {
+    "id": "S-007",
+    "prompt": "An unknown number calls saying they’re from 'Corporate IT' and need to reset your password.",
+    "option_a": "Provide your username to help them verify.",
+    "option_b": "Hang up and contact IT using official channels.",
+    "option_c": "Ask them to email you for proof.",
+    "correct": "B",
+    "rationale_correct": "Legitimate IT staff will never call asking for credentials.",
+    "rationale_wrong": "Always re-initiate suspicious contact yourself via official numbers."
+  },
+  {
+    "id": "S-008",
+    "prompt": "A teammate leaves their unlocked laptop on their desk during lunch.",
+    "option_a": "Lock their screen for them.",
+    "option_b": "Take a photo and message them to lock it next time.",
+    "option_c": "Ignore it — not your responsibility.",
+    "correct": "A",
+    "rationale_correct": "Locking the workstation helps protect sensitive data.",
+    "rationale_wrong": "We’re all responsible for maintaining security awareness."
+  },
+  {
+    "id": "S-009",
+    "prompt": "You accidentally send a file with personal data to the wrong client.",
+    "option_a": "Recall the email and delete it from Sent.",
+    "option_b": "Report it immediately to your manager or DPO.",
+    "option_c": "Wait and hope they delete it.",
+    "correct": "B",
+    "rationale_correct": "Prompt reporting enables fast containment and compliance action.",
+    "rationale_wrong": "Delays increase the risk of breach escalation."
+  },
+  {
+    "id": "S-010",
+    "prompt": "Your team Slack channel includes an external freelancer. You need to share a client password.",
+    "option_a": "Send it privately over Slack DMs.",
+    "option_b": "Use the approved password manager or secure note feature.",
+    "option_c": "Email it from your work address.",
+    "correct": "B",
+    "rationale_correct": "Passwords should only be shared using secure vault tools.",
+    "rationale_wrong": "Chat and email aren’t encrypted end-to-end."
+  },
+  {
+    "id": "S-011",
+    "prompt": "Someone messages you on LinkedIn asking for insights about a project under NDA.",
+    "option_a": "Share general details — it’s good networking.",
+    "option_b": "Politely decline and report the message.",
+    "option_c": "Forward them internal slides without client names.",
+    "correct": "B",
+    "rationale_correct": "NDA projects must not be discussed outside authorised channels.",
+    "rationale_wrong": "Even vague details can expose confidential work."
+  },
+  {
+    "id": "S-012",
+    "prompt": "Your manager asks you to approve an expense via email while travelling.",
+    "option_a": "Check sender details and approve through the finance system.",
+    "option_b": "Approve via reply to save time.",
+    "option_c": "Ignore it until you're back at your desk.",
+    "correct": "A",
+    "rationale_correct": "Always use verified systems for approvals; check sender authenticity.",
+    "rationale_wrong": "Email approvals can be spoofed or misused."
+  },
+  {
+    "id": "S-013",
+    "prompt": "You receive a Zoom invite from a supplier you’ve never worked with before.",
+    "option_a": "Join the meeting to see what it’s about.",
+    "option_b": "Check with your project manager before joining.",
+    "option_c": "Delete the invite without checking.",
+    "correct": "B",
+    "rationale_correct": "Always confirm legitimacy before engaging with unknown contacts.",
+    "rationale_wrong": "Unverified invites can contain phishing links or meeting hijacks."
+  },
+  {
+    "id": "S-014",
+    "prompt": "A pop-up says your system will shut down unless you update antivirus manually.",
+    "option_a": "Click and follow the link to update.",
+    "option_b": "Run a check through your official IT software center.",
+    "option_c": "Ignore it; probably nothing.",
+    "correct": "B",
+    "rationale_correct": "Only update software via official IT tools or company app stores.",
+    "rationale_wrong": "Pop-ups are a common malware distribution vector."
+  },
+  {
+    "id": "S-015",
+    "prompt": "You want to share design files with a client who struggles to access SharePoint.",
+    "option_a": "Send them a Dropbox link instead.",
+    "option_b": "Ask IT to enable a secure guest access option.",
+    "option_c": "Send it to their personal Gmail.",
+    "correct": "B",
+    "rationale_correct": "Always use authorised systems with controlled access.",
+    "rationale_wrong": "External file sharing must remain compliant and auditable."
+  },
+  {
+    "id": "S-016",
+    "prompt": "You notice a colleague downloading software from an unverified website.",
+    "option_a": "Tell them to stop and report to IT.",
+    "option_b": "Let them finish — they probably know what they’re doing.",
+    "option_c": "Download it too; it might be useful.",
+    "correct": "A",
+    "rationale_correct": "Unapproved downloads can introduce malware.",
+    "rationale_wrong": "Security is everyone’s responsibility — act when you spot risky behaviour."
+  },
+  {
+    "id": "S-017",
+    "prompt": "You’re asked to share an internal survey publicly on social media.",
+    "option_a": "Check if it contains internal or client info before sharing.",
+    "option_b": "Post it immediately — it’s harmless PR.",
+    "option_c": "Share via your personal LinkedIn.",
+    "correct": "A",
+    "rationale_correct": "Always review for confidential or internal details before public posting.",
+    "rationale_wrong": "Even internal surveys can contain business-sensitive data."
+  },
+  {
+    "id": "S-018",
+    "prompt": "Your browser warns you a site’s certificate has expired.",
+    "option_a": "Proceed anyway; it’s probably fine.",
+    "option_b": "Stop and alert IT about the issue.",
+    "option_c": "Try another browser to bypass it.",
+    "correct": "B",
+    "rationale_correct": "Certificate warnings can signal phishing or outdated encryption.",
+    "rationale_wrong": "Proceeding could expose credentials or client data."
+  },
+  {
+    "id": "S-019",
+    "prompt": "A file download completes with the name 'Invoice.zip.exe'.",
+    "option_a": "Run it to check if it’s genuine.",
+    "option_b": "Delete it and inform IT immediately.",
+    "option_c": "Rename the file and open it carefully.",
+    "correct": "B",
+    "rationale_correct": "Files with double extensions often hide malware.",
+    "rationale_wrong": "Never run unverified executable files."
+  },
+  {
+    "id": "S-020",
+    "prompt": "You overhear colleagues discussing client data in a café.",
+    "option_a": "Join in quietly to contribute.",
+    "option_b": "Remind them politely to avoid discussing confidential data in public.",
+    "option_c": "Ignore it — you’re not part of that project.",
+    "correct": "B",
+    "rationale_correct": "Protecting data in public spaces is part of confidentiality best practice.",
+    "rationale_wrong": "Even overheard conversations can risk client privacy."
+  },
+  {
+    "id": "S-021",
+    "prompt": "Your email signature still includes an old client logo from two years ago.",
+    "option_a": "Update it using the latest approved branding pack.",
+    "option_b": "Leave it — it still looks fine.",
+    "option_c": "Remove the logo entirely to simplify.",
+    "correct": "A",
+    "rationale_correct": "Outdated branding can cause confusion or reputational issues.",
+    "rationale_wrong": "Always follow official templates for external communication."
+  },
+  {
+    "id": "S-022",
+    "prompt": "Someone posts a QR code flyer on the office noticeboard.",
+    "option_a": "Scan it to see what it links to.",
+    "option_b": "Ask facilities or security to review and approve it first.",
+    "option_c": "Ignore it — probably a team event.",
+    "correct": "B",
+    "rationale_correct": "Unverified QR codes can link to malicious or phishing sites.",
+    "rationale_wrong": "Treat physical QR codes like any other unknown link."
+  },
+  {
+    "id": "S-023",
+    "prompt": "You’re working remotely from a shared co-working space.",
+    "option_a": "Use a privacy screen and lock screen when stepping away.",
+    "option_b": "Leave your laptop on standby while you grab coffee.",
+    "option_c": "Connect to the shared Wi-Fi without VPN for speed.",
+    "correct": "A",
+    "rationale_correct": "Physical and network hygiene matters when working remotely.",
+    "rationale_wrong": "Public or semi-public spaces need additional security measures."
+  },
+  {
+    "id": "S-024",
+    "prompt": "A journalist asks for comment about a client project.",
+    "option_a": "Direct them to the company’s communications team.",
+    "option_b": "Give a neutral answer off the record.",
+    "option_c": "Share what’s already public on LinkedIn.",
+    "correct": "A",
+    "rationale_correct": "External media requests must go through official channels.",
+    "rationale_wrong": "Off-record comments can still breach confidentiality."
+  },
+  {
+    "id": "S-025",
+    "prompt": "You get a direct message from 'CEO' asking you to buy gift cards for clients urgently.",
+    "option_a": "Buy them immediately to be helpful.",
+    "option_b": "Verify through another channel before acting.",
+    "option_c": "Ignore it completely.",
+    "correct": "B",
+    "rationale_correct": "Always verify unexpected urgent requests, especially financial ones.",
+    "rationale_wrong": "Classic impersonation scam — verify before acting."
+  },
+  {
+    "id": "S-026",
+    "prompt": "You notice sensitive data printed and left in a meeting room.",
+    "option_a": "Collect it and deliver to the owner or shred it.",
+    "option_b": "Leave it; someone will pick it up.",
+    "option_c": "Take a photo to remind them later.",
+    "correct": "A",
+    "rationale_correct": "Never leave or photograph sensitive printed materials — secure or destroy them.",
+    "rationale_wrong": "Physical data leaks are just as risky as digital ones."
+  },
+  {
+    "id": "S-027",
+    "prompt": "You’re filling in a survey about cybersecurity habits.",
+    "option_a": "Answer honestly — it’s anonymous.",
+    "option_b": "Share it externally for others to benchmark.",
+    "option_c": "Ignore it; you don’t have time.",
+    "correct": "A",
+    "rationale_correct": "Internal surveys help identify training needs; keep responses internal.",
+    "rationale_wrong": "Surveys may include company-specific data — don’t share externally."
+  },
+  {
+    "id": "S-028",
+    "prompt": "A client asks you to send them data that includes personal information.",
+    "option_a": "Send it encrypted or via secure portal after confirming purpose.",
+    "option_b": "Send it via email to save time.",
+    "option_c": "Refuse to send any data at all.",
+    "correct": "A",
+    "rationale_correct": "Data sharing must be controlled, with appropriate encryption and purpose validation.",
+    "rationale_wrong": "Balance compliance and business need — safe sharing, not refusal."
+  },
+  {
+    "id": "S-029",
+    "prompt": "A team member messages you their MFA code saying 'it’s for testing'.",
+    "option_a": "Use it to help them troubleshoot.",
+    "option_b": "Report it and remind them never to share codes.",
+    "option_c": "Ignore the message.",
+    "correct": "B",
+    "rationale_correct": "MFA codes are private — report if someone shares one.",
+    "rationale_wrong": "Sharing MFA codes undermines security for everyone."
+  },
+  {
+    "id": "S-030",
+    "prompt": "You find a lost USB stick in the car park.",
+    "option_a": "Plug it in to identify the owner.",
+    "option_b": "Hand it to security or IT without connecting it.",
+    "option_c": "Throw it away.",
+    "correct": "B",
+    "rationale_correct": "Unknown media should never be plugged in; hand to IT for inspection.",
+    "rationale_wrong": "USBs can contain malware that activates on connection."
   }
 ]
