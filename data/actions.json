@@ -1,114 +1,74 @@
 [
-  {
-    "id": "A-001",
-    "bucket": "safe",
-    "description": "Updated the client project tracker in Synergist",
-    "risk_level": 0,
-    "actually_suspicious": false,
-    "departments_hint": "Project Management"
-  },
-  {
-    "id": "A-101",
-    "bucket": "risky_innocent",
-    "description": "Shared a link to a Teams folder with 'Anyone with the link' permissions",
-    "risk_level": 1,
-    "actually_suspicious": false,
-    "departments_hint": "Client Services"
-  },
-  {
-    "id": "A-102",
-    "bucket": "risky_innocent",
-    "description": "Forwarded a client\u2019s email chain to personal inbox to finish work on the train",
-    "risk_level": 2,
-    "actually_suspicious": false,
-    "departments_hint": "All"
-  },
-  {
-    "id": "A-103",
-    "bucket": "risky_innocent",
-    "description": "Accepted a LinkedIn connection from someone claiming to work at a client brand",
-    "risk_level": 2,
-    "actually_suspicious": false,
-    "departments_hint": "Account Management"
-  },
-  {
-    "id": "A-104",
-    "bucket": "risky_innocent",
-    "description": "Plugged in a USB drive received from a supplier",
-    "risk_level": 3,
-    "actually_suspicious": false,
-    "departments_hint": "Creative, Production"
-  },
-  {
-    "id": "A-201",
-    "bucket": "decoy",
-    "description": "Got an email about an 'urgent GDPR update' and reported it to IT",
-    "risk_level": 1,
-    "actually_suspicious": false,
-    "departments_hint": "All"
-  },
-  {
-    "id": "A-202",
-    "bucket": "decoy",
-    "description": "Found a USB stick in the office and turned it in unopened",
-    "risk_level": 0,
-    "actually_suspicious": false,
-    "departments_hint": "Office Admin"
-  },
-  {
-    "id": "A-203",
-    "bucket": "decoy",
-    "description": "Was added to a suspicious 'Creative Assets' group and raised it",
-    "risk_level": 1,
-    "actually_suspicious": false,
-    "departments_hint": "Creative"
-  },
-  {
-    "id": "A-301",
-    "bucket": "traitor_sabotage",
-    "description": "Set up an external SharePoint and granted full access to 'client' Gmail",
-    "risk_level": 3,
-    "actually_suspicious": true,
-    "departments_hint": "Client Services"
-  },
-  {
-    "id": "A-302",
-    "bucket": "traitor_sabotage",
-    "description": "Installed an 'AI transcription' browser extension that records calls",
-    "risk_level": 2,
-    "actually_suspicious": true,
-    "departments_hint": "Communications"
-  },
-  {
-    "id": "A-303",
-    "bucket": "traitor_sabotage",
-    "description": "Forwarded internal files to 'CEO Assistant' from spoofed domain",
-    "risk_level": 3,
-    "actually_suspicious": true,
-    "departments_hint": "All"
-  },
-  {
-    "id": "A-401",
-    "bucket": "red_herring",
-    "description": "Does a presentation on smart new AI tech (informational only)",
-    "risk_level": 0,
-    "actually_suspicious": false,
-    "departments_hint": "All"
-  },
-  {
-    "id": "A-402",
-    "bucket": "red_herring",
-    "description": "Forgets laptop at home and spends day working offline",
-    "risk_level": 0,
-    "actually_suspicious": false,
-    "departments_hint": "All"
-  },
-  {
-    "id": "A-403",
-    "bucket": "red_herring",
-    "description": "Phones in ill and does not log on",
-    "risk_level": 0,
-    "actually_suspicious": false,
-    "departments_hint": "All"
-  }
+  // --- SAFE (20) ---
+  {"id":"A-001","bucket":"safe","description":"Updated the client project tracker in Synergist","risk_level":0,"actually_suspicious":false,"departments_hint":"Project Management"},
+  {"id":"A-002","bucket":"safe","description":"Scheduled a client status call and shared the agenda via Teams","risk_level":0,"actually_suspicious":false,"departments_hint":"Account Management"},
+  {"id":"A-003","bucket":"safe","description":"Used the company VPN while working from home","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-004","bucket":"safe","description":"Reported a suspicious email using the ‘Report Phish’ button","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-005","bucket":"safe","description":"Saved presentation files to the approved SharePoint folder","risk_level":0,"actually_suspicious":false,"departments_hint":"Creative, Client Services"},
+  {"id":"A-006","bucket":"safe","description":"Checked supplier credentials before approving payment","risk_level":0,"actually_suspicious":false,"departments_hint":"Finance, Procurement"},
+  {"id":"A-007","bucket":"safe","description":"Used password manager to generate a new login","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-008","bucket":"safe","description":"Locked laptop when stepping away from desk","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-009","bucket":"safe","description":"Verified external collaborator’s email domain before sharing files","risk_level":0,"actually_suspicious":false,"departments_hint":"Project Management"},
+  {"id":"A-010","bucket":"safe","description":"Updated antivirus software when prompted","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-011","bucket":"safe","description":"Escalated a strange invoice to Finance for double-checking","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-012","bucket":"safe","description":"Attended the quarterly cybersecurity refresher session","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-013","bucket":"safe","description":"Used Teams chat for internal collaboration instead of email","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-014","bucket":"safe","description":"Approved a design brief via official workflow tool","risk_level":0,"actually_suspicious":false,"departments_hint":"Creative"},
+  {"id":"A-015","bucket":"safe","description":"Double-checked recipient list before sending client update","risk_level":0,"actually_suspicious":false,"departments_hint":"Communications"},
+  {"id":"A-016","bucket":"safe","description":"Archived old project folders into secure storage","risk_level":0,"actually_suspicious":false,"departments_hint":"Ops"},
+  {"id":"A-017","bucket":"safe","description":"Used company-issued USB drive for large file transfer","risk_level":0,"actually_suspicious":false,"departments_hint":"Production"},
+  {"id":"A-018","bucket":"safe","description":"Confirmed NDA signed before sharing draft creative","risk_level":0,"actually_suspicious":false,"departments_hint":"Account Management"},
+  {"id":"A-019","bucket":"safe","description":"Verified client contact identity on video call before access change","risk_level":0,"actually_suspicious":false,"departments_hint":"IT, Client Services"},
+  {"id":"A-020","bucket":"safe","description":"Cleaned inbox of old attachments and confidential files","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+
+  // --- RISKY BUT INNOCENT (15) ---
+  {"id":"A-101","bucket":"risky_innocent","description":"Shared a link to a Teams folder with 'Anyone with the link' permissions","risk_level":1,"actually_suspicious":false,"departments_hint":"Client Services"},
+  {"id":"A-102","bucket":"risky_innocent","description":"Forwarded a client’s email chain to personal inbox to finish work on the train","risk_level":2,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-103","bucket":"risky_innocent","description":"Accepted a LinkedIn connection from someone claiming to work at a client brand","risk_level":2,"actually_suspicious":false,"departments_hint":"Account Management"},
+  {"id":"A-104","bucket":"risky_innocent","description":"Plugged in a USB drive received from a supplier","risk_level":3,"actually_suspicious":false,"departments_hint":"Creative, Production"},
+  {"id":"A-105","bucket":"risky_innocent","description":"Used public Wi-Fi to upload a presentation","risk_level":2,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-106","bucket":"risky_innocent","description":"Left laptop unlocked during a quick chat with a colleague","risk_level":2,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-107","bucket":"risky_innocent","description":"Saved a client list to desktop for convenience","risk_level":1,"actually_suspicious":false,"departments_hint":"Sales"},
+  {"id":"A-108","bucket":"risky_innocent","description":"Used personal email to send a large file that wouldn’t attach","risk_level":3,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-109","bucket":"risky_innocent","description":"Clicked a link in an email labelled 'invoice update' before realising it looked odd","risk_level":3,"actually_suspicious":false,"departments_hint":"Finance"},
+  {"id":"A-110","bucket":"risky_innocent","description":"Gave temporary guest access to a freelancer and forgot to revoke it","risk_level":2,"actually_suspicious":false,"departments_hint":"Project Management"},
+  {"id":"A-111","bucket":"risky_innocent","description":"Shared internal document screenshots in a social chat","risk_level":2,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-112","bucket":"risky_innocent","description":"Used a new AI copywriting tool without checking its data policy","risk_level":2,"actually_suspicious":false,"departments_hint":"Communications"},
+  {"id":"A-113","bucket":"risky_innocent","description":"Took client notes on personal phone instead of company laptop","risk_level":1,"actually_suspicious":false,"departments_hint":"Consultant"},
+  {"id":"A-114","bucket":"risky_innocent","description":"Joined an online webinar using the same password as work account","risk_level":2,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-115","bucket":"risky_innocent","description":"Sent internal slides to a partner’s Gmail for feedback","risk_level":3,"actually_suspicious":false,"departments_hint":"Marketing"},
+
+  // --- DECOY (10) ---
+  {"id":"A-201","bucket":"decoy","description":"Got an email about an 'urgent GDPR update' and reported it to IT","risk_level":1,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-202","bucket":"decoy","description":"Found a USB stick in the office and turned it in unopened","risk_level":0,"actually_suspicious":false,"departments_hint":"Office Admin"},
+  {"id":"A-203","bucket":"decoy","description":"Was added to a suspicious 'Creative Assets' group and raised it","risk_level":1,"actually_suspicious":false,"departments_hint":"Creative"},
+  {"id":"A-204","bucket":"decoy","description":"Received a call claiming to be from IT and immediately hung up","risk_level":1,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-205","bucket":"decoy","description":"Checked with manager before opening a finance link","risk_level":0,"actually_suspicious":false,"departments_hint":"Finance"},
+  {"id":"A-206","bucket":"decoy","description":"Forwarded a phishing email to the security mailbox","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-207","bucket":"decoy","description":"Questioned a client’s odd password request on call","risk_level":1,"actually_suspicious":false,"departments_hint":"Client Services"},
+  {"id":"A-208","bucket":"decoy","description":"Used a sandbox account to test a suspicious attachment","risk_level":1,"actually_suspicious":false,"departments_hint":"IT"},
+  {"id":"A-209","bucket":"decoy","description":"Spotted inconsistent branding in a supplier email and reported it","risk_level":1,"actually_suspicious":false,"departments_hint":"Procurement"},
+  {"id":"A-210","bucket":"decoy","description":"Declined to share login over phone with someone claiming urgency","risk_level":1,"actually_suspicious":false,"departments_hint":"All"},
+
+  // --- TRAITOR SABOTAGE (10) ---
+  {"id":"A-301","bucket":"traitor_sabotage","description":"Set up an external SharePoint and granted full access to 'client' Gmail","risk_level":3,"actually_suspicious":true,"departments_hint":"Client Services"},
+  {"id":"A-302","bucket":"traitor_sabotage","description":"Installed an 'AI transcription' browser extension that records calls","risk_level":2,"actually_suspicious":true,"departments_hint":"Communications"},
+  {"id":"A-303","bucket":"traitor_sabotage","description":"Forwarded internal files to 'CEO Assistant' from spoofed domain","risk_level":3,"actually_suspicious":true,"departments_hint":"All"},
+  {"id":"A-304","bucket":"traitor_sabotage","description":"Approved payment to a fake vendor account","risk_level":3,"actually_suspicious":true,"departments_hint":"Finance"},
+  {"id":"A-305","bucket":"traitor_sabotage","description":"Disabled MFA on personal request from 'IT Support'","risk_level":3,"actually_suspicious":true,"departments_hint":"All"},
+  {"id":"A-306","bucket":"traitor_sabotage","description":"Uploaded sensitive pitch deck to a public drive","risk_level":3,"actually_suspicious":true,"departments_hint":"Marketing"},
+  {"id":"A-307","bucket":"traitor_sabotage","description":"Shared client credentials with an external collaborator via chat","risk_level":3,"actually_suspicious":true,"departments_hint":"All"},
+  {"id":"A-308","bucket":"traitor_sabotage","description":"Used compromised account to invite fake users into Teams","risk_level":3,"actually_suspicious":true,"departments_hint":"IT"},
+  {"id":"A-309","bucket":"traitor_sabotage","description":"Opened a phishing link disguised as an internal HR update","risk_level":3,"actually_suspicious":true,"departments_hint":"HR"},
+  {"id":"A-310","bucket":"traitor_sabotage","description":"Deleted audit logs to hide suspicious activity","risk_level":3,"actually_suspicious":true,"departments_hint":"IT"},
+
+  // --- RED HERRINGS (8) ---
+  {"id":"A-401","bucket":"red_herring","description":"Does a presentation on smart new AI tech (informational only)","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-402","bucket":"red_herring","description":"Forgets laptop at home and spends day working offline","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-403","bucket":"red_herring","description":"Phones in ill and does not log on","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-404","bucket":"red_herring","description":"Organises a team lunch","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-405","bucket":"red_herring","description":"Decorates desk for a birthday","risk_level":0,"actually_suspicious":false,"departments_hint":"Office Admin"},
+  {"id":"A-406","bucket":"red_herring","description":"Takes part in the company wellbeing challenge","risk_level":0,"actually_suspicious":false,"departments_hint":"HR"},
+  {"id":"A-407","bucket":"red_herring","description":"Attends external conference with no client data access","risk_level":0,"actually_suspicious":false,"departments_hint":"All"},
+  {"id":"A-408","bucket":"red_herring","description":"Cleans up shared drive folders for space","risk_level":0,"actually_suspicious":false,"departments_hint":"Ops"}
 ]
