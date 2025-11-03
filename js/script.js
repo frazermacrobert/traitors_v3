@@ -10,44 +10,21 @@ function weightedPick(items, weights, rng){
 }
 
 // ---- Scenario normalizer (accepts both shapes) ----
-// Accepts either:
-// { options:[...], correct:"A|B|C", rationale_correct, rationale_wrong }
-// or:
-// { option_a:"", option_b:"", option_c:"", correct:"A|B|C", rationale_correct, rationale_wrong }
 function normalizeScenario(raw){
   if(!raw) return null;
-
-  let options = Array.isArray(raw.options) ? raw.options.slice(0,3) : null;
-  if(!options){
-    options = [raw.option_a, raw.option_b, raw.option_c].filter(Boolean);
-  }
-  if(!options || options.length !== 3){
-    console.warn("Scenario skipped due to invalid options:", raw);
-    return null;
-  }
+  let options = Array.isArray(raw.options) ? raw.options.slice(0,3)
+               : [raw.option_a, raw.option_b, raw.option_c].filter(Boolean);
+  if(!options || options.length !== 3){ console.warn("Scenario skipped due to invalid options:", raw); return null; }
 
   let correct = raw.correct;
-  if(typeof correct === "number"){
-    correct = ["A","B","C"][correct] || "A";
-  }
-  if(typeof correct === "string"){
-    correct = correct.trim().toUpperCase();
-    if(!["A","B","C"].includes(correct)) correct = "A";
-  }else{
-    correct = "A";
-  }
+  if(typeof correct === "number"){ correct = ["A","B","C"][correct] || "A"; }
+  if(typeof correct === "string"){ correct = correct.trim().toUpperCase(); if(!["A","B","C"].includes(correct)) correct="A"; }
+  else { correct="A"; }
 
   const rationale_correct = raw.rationale_correct || raw.rationaleCorrect || "Good call.";
   const rationale_wrong   = raw.rationale_wrong   || raw.rationaleWrong   || "That creates risk — try again next time.";
 
-  return {
-    id: raw.id || "",
-    prompt: raw.prompt || "",
-    options,
-    correct,
-    rationale_correct,
-    rationale_wrong
-  };
+  return { id: raw.id||"", prompt: raw.prompt||"", options, correct, rationale_correct, rationale_wrong };
 }
 
 const DIFF={
@@ -74,9 +51,9 @@ const S={
   analysis:true,difficulty:"Medium",numTraitors:3,
   log:[], suspicion:{}, alive:new Set(), eliminated:new Set(), elimReason:{},
   // anti-repetition state
-  usedActionIds: new Set(),           // per-round uniqueness
-  history: {},                        // id -> recent action ids
-  historyWindow: 3                    // cooldown length
+  usedActionIds: new Set(),
+  history: {},
+  historyWindow: 3
 };
 
 async function loadData(){
@@ -88,14 +65,11 @@ async function loadData(){
   ]);
   S.allEmployees=emps; 
   S.actions=acts; 
-  
-  // Normalize scenarios to a single internal shape
   S.scenarios = (Array.isArray(scens)? scens: []).map(normalizeScenario).filter(Boolean);
   if(!S.scenarios.length){
     console.error("Scenario data error: 0 valid scenarios after normalization.");
     alert("No valid scenarios found. Please check data/scenarios.json formatting.");
   }
-
   S.elimMsgs=elim;
 
   // validate action buckets
@@ -114,7 +88,7 @@ function populatePlayerSelect(emps){
 function startGame(){
   S.log=[]; S.round=1; S.players=[]; S.suspicion={};
   S.alive=new Set(); S.eliminated=new Set(); S.traitors=new Set(); S.elimReason={};
-  S.usedActionIds = new Set(); S.history = {};  // reset anti-repetition
+  S.usedActionIds = new Set(); S.history = {};
 
   const you=S.allEmployees.find(e=>e.id===S.youId);
   const others=seededShuffle(S.allEmployees.filter(e=>e.id!==S.youId), S.rng).slice(0,9);
@@ -124,15 +98,12 @@ function startGame(){
     id:e.id, name:e.name, department:e.department,
     influence:defaultInfluence(e.department), behaviour:defaultBehaviour(e.department),
     role:"Innocent", status:"Alive",
-    // NOTE: uses PNG for normal avatar (your custom art), and existing -sad variant path if you still use SVG; change to .png if needed.
     avatar:`assets/pngs/${e.id}.png`,
     avatarSad:`assets/avatars/${e.id}-sad.svg`,
-    // Optional traitor variant to reveal on loss/win (swap path/extension to your preference)
     avatarTraitor:`assets/pngs/${e.id}-traitor.png`
   }));
   S.players.forEach(p=>{ S.alive.add(p.id); S.history[p.id]=[]; });
 
-  // Assign traitors among bots (exclude you)
   const botIds=S.players.map(p=>p.id).filter(id=>id!==S.youId);
   seededShuffle(botIds,S.rng).slice(0,S.numTraitors).forEach(id=>S.traitors.add(id));
   S.players.forEach(p=>{ if(S.traitors.has(p.id)) p.role="Traitor"; });
@@ -146,10 +117,8 @@ function startGame(){
 
 function nextRound(){
   if(checkEnd()) return;
-  // new round → clear per-round uniqueness and add light decay
   S.usedActionIds.clear();
   Object.keys(S.suspicion).forEach(id=> S.suspicion[id] = (S.suspicion[id]||0) * 0.9);
-
   renderRoundInfo();
   doScenarioPhase();
 }
@@ -158,21 +127,18 @@ function checkEnd(){
   const alivePlayers=[...S.alive].map(id=>S.players.find(p=>p.id===id));
   const aliveTraitors=alivePlayers.filter(p=>S.traitors.has(p.id)).length;
 
-  // You were eliminated -> loss
   if(!S.alive.has(S.youId)){
-    revealTraitors(); // reveal on loss
+    revealTraitors();
     announce(`You were eliminated. Traitors win.`);
     return true;
   }
-  // All traitors gone -> win (REVEAL TOO)
   if(aliveTraitors===0){
-    revealTraitors(); // NEW: reveal who the traitors were that got caught
+    revealTraitors(); // reveal traitors on win too
     announce(`All traitors eliminated. You win!`);
     return true;
   }
-  // Traitors take control -> loss
   if(aliveTraitors >= (alivePlayers.length - aliveTraitors)){
-    revealTraitors(); // reveal on loss
+    revealTraitors();
     announce(`Traitors took control. You lose.`);
     return true;
   }
@@ -219,7 +185,6 @@ function chooseActionFor(playerId, rng){
   const isTraitor=S.traitors.has(playerId);
   const d=DIFF[S.difficulty];
 
-  // Primary bucket choice
   let candidates=[];
   if(isTraitor){
     const sabotage = rng() < d.traitor_rate;
@@ -229,37 +194,31 @@ function chooseActionFor(playerId, rng){
     candidates = [ err ? "risky_innocent" : (rng()<p.behaviour.safe ? "safe" : "decoy") ];
   }
 
-  // Fallback order ensures result even with tiny data
   const fallback = isTraitor
     ? ["traitor_sabotage","decoy","safe","risky_innocent","red_herring"]
     : ["safe","decoy","risky_innocent","red_herring","traitor_sabotage"];
   const tryOrder=[...candidates, ...fallback.filter(b=>!candidates.includes(b))];
 
-  // Filter helpers (anti-repetition)
   const recent = new Set(S.history[playerId].slice(-S.historyWindow));
   function poolFilter(bucket){
     const pool = poolBy(bucket).filter(a=>!S.usedActionIds.has(a.id) && !recent.has(a.id));
     if(pool.length) return pool;
-    // allow department-weighted even if recently used is blocking too much
     return poolBy(bucket).filter(a=>!S.usedActionIds.has(a.id)) || [];
   }
 
   for(const b of tryOrder){
     let pool = poolFilter(b);
     if(pool.length){
-      // Department weighting to diversify descriptions
       const weights = pool.map(a=>{
         let w = 1;
-        if(deptMatches(a, p.department)) w += 1.25; // prefer dept-adjacent
-        if(a.risk_level===0 && b==="safe") w += 0.2; // slight spread among safes
+        if(deptMatches(a, p.department)) w += 1.25;
+        if(a.risk_level===0 && b==="safe") w += 0.2;
         return w;
       });
       const act = weightedPick(pool, weights, rng);
       return { act, usedBucket:b, fellBack:(b!==candidates[0]) };
     }
   }
-
-  // Last resort
   return { act:{ id:"_stub", description:"…did some uneventful work.", risk_level:0, actually_suspicious:false }, usedBucket:"safe", fellBack:true };
 }
 
@@ -269,13 +228,10 @@ function doActionsPhase(){
 
   aliveIds.filter(id=>id!==S.youId).forEach(id=>{
     const { act, usedBucket, fellBack } = chooseActionFor(id, S.rng);
-
-    // Track anti-repetition
     if(act.id) S.usedActionIds.add(act.id);
     const h = S.history[id] || (S.history[id]=[]);
     h.push(act.id || "_stub"); if(h.length > S.historyWindow) h.shift();
 
-    // Suspicion update
     const add=act.risk_level*0.8 + (act.actually_suspicious?1.2:0)*DIFF[S.difficulty].pattern_clarity;
     S.suspicion[id]=Math.max(0,(S.suspicion[id]||0)*0.75 + add);
 
@@ -333,7 +289,19 @@ function handlePlayerVote(targetId){
   const candidates=aliveIds.filter(id=>id!==S.youId);
   const planned=[];
 
+  // EASY/MEDIUM: exactly one traitor must vote for YOU (subtle clue), and no one else may.
+  let forcedTraitor = null;
+  if (S.youId && (S.difficulty === "Easy" || S.difficulty === "Medium")) {
+    const aliveTraitors = voters.filter(id => S.traitors.has(id));
+    if (aliveTraitors.length) {
+      forcedTraitor = aliveTraitors[Math.floor(S.rng() * aliveTraitors.length)];
+      planned.push({ who: forcedTraitor, vote: S.youId, _forced: true });
+    }
+  }
+
   voters.forEach(id=>{
+    if (id === forcedTraitor) return; // skip the forced traitor, already planned
+
     const p=S.players.find(x=>x.id===id);
     const sorted=candidates.filter(x=>x!==id).sort((a,b)=>(S.suspicion[b]||0)-(S.suspicion[a]||0));
     const baseTarget=sorted[0]??targetId;
@@ -347,6 +315,14 @@ function handlePlayerVote(targetId){
         vote = baseTarget;
       }
     }
+
+    // EASY/MEDIUM safety: no one else may vote for the player
+    if ((S.difficulty === "Easy" || S.difficulty === "Medium") && vote === S.youId) {
+      const nonYou = sorted.filter(x => x !== S.youId);
+      vote = nonYou[0] || baseTarget || candidates.find(x => x !== S.youId) || targetId;
+      if (vote === S.youId && nonYou.length > 1) vote = nonYou[1];
+    }
+
     planned.push({who:id, vote});
   });
 
@@ -360,7 +336,6 @@ function handlePlayerVote(targetId){
       Object.entries(tally).forEach(([id,v])=>{
         if(v>maxVotes){ maxVotes=v; eliminated=id; }
         else if(v===maxVotes){
-          // tie-break by higher suspicion
           if((S.suspicion[id]||0)>(S.suspicion[eliminated]||0)) eliminated=id;
         }
       });
@@ -371,10 +346,7 @@ function handlePlayerVote(targetId){
       const isTraitor=S.traitors.has(eliminated);
       eliminate(eliminated, isTraitor, "VotedOut");
       renderAll();
-      if (tieBreakUsed) {
-        // Explain the draw resolution explicitly
-        logLine(`a deciding vote chose ${nameOf(eliminated)}.`);
-      }
+      if (tieBreakUsed) logLine(`a deciding vote chose ${nameOf(eliminated)}.`);
       logLine(`Eliminated: ${nameOf(eliminated)} (${isTraitor?'Traitor':'Innocent'}).`);
 
       if(!isTraitor){
@@ -461,20 +433,16 @@ document.getElementById('closeLog').onclick=()=>document.getElementById('logModa
 
 function announce(msg){
   const scenario=document.getElementById('scenario');
-
-  // NEW: build traitor list for end-of-game reveal
-  const traitorNames = S.players
-    .filter(p => S.traitors.has(p.id))
-    .map(p => p.name);
-  const traitorList = traitorNames.length
-    ? `<br><br><strong>The traitors were:</strong> ${traitorNames.join(', ')}.`
-    : '';
+  // Traitor list for finale
+  const traitorNames = S.players.filter(p => S.traitors.has(p.id)).map(p => p.name);
+  const traitorList = traitorNames.length ? `<br><br><strong>The traitors were:</strong> ${traitorNames.join(', ')}.` : '';
 
   scenario.innerHTML = `<h2>Outcome</h2>
     <div>${msg}${traitorList}</div>
     <div class="footer" style="display:flex;justify-content:flex-end">
       <button class="btn" onclick="location.reload()">Play Again</button>
     </div>`;
+}
 
 function renderAll(){ renderTopbar(); }
 
@@ -504,7 +472,6 @@ function revealTraitors(){
     if(!S.traitors.has(p.id)) return;
     const card=document.querySelector(`.player-card[data-id="${p.id}"]`);
     if(!card) return;
-    // Add a CSS class for red outline (define in CSS) or fall back to inline style
     card.classList.add('revealed-traitor');
     if(!document.querySelector('style[data-traitor-reveal]')){
       const st=document.createElement('style'); st.setAttribute('data-traitor-reveal','');
@@ -513,7 +480,6 @@ function revealTraitors(){
       `;
       document.head.appendChild(st);
     }
-    // Try to swap to traitor avatar; if it 404s, revert to original
     const img=card.querySelector('img');
     if(img && p.avatarTraitor){
       const originalSrc=img.src;
