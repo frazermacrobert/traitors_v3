@@ -126,7 +126,7 @@ function startGame(){
     role:"Innocent", status:"Alive",
     // NOTE: uses PNG for normal avatar (your custom art), and existing -sad variant path if you still use SVG; change to .png if needed.
     avatar:`assets/pngs/${e.id}.png`,
-    avatarSad:`assets/avatars/${e.id}-sad.svg`,
+    avatarSad:`assets/gone/${e.id}-sad.png`,
     // Optional traitor variant to reveal on loss (swap path/extension to your preference)
     avatarTraitor:`assets/pngs/${e.id}-traitor.png`
   }));
