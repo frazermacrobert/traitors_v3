@@ -126,8 +126,8 @@ function startGame(){
     role:"Innocent", status:"Alive",
     // NOTE: uses PNG for normal avatar (your custom art), and existing -sad variant path if you still use SVG; change to .png if needed.
     avatar:`assets/pngs/${e.id}.png`,
-    avatarSad:`assets/gone/${e.id}-sad.png`,
-    // Optional traitor variant to reveal on loss (swap path/extension to your preference)
+    avatarSad:`assets/avatars/${e.id}-sad.svg`,
+    // Optional traitor variant to reveal on loss/win (swap path/extension to your preference)
     avatarTraitor:`assets/pngs/${e.id}-traitor.png`
   }));
   S.players.forEach(p=>{ S.alive.add(p.id); S.history[p.id]=[]; });
@@ -160,18 +160,19 @@ function checkEnd(){
 
   // You were eliminated -> loss
   if(!S.alive.has(S.youId)){
-    revealTraitors(); // NEW: visually reveal traitors on player loss
+    revealTraitors(); // reveal on loss
     announce(`You were eliminated. Traitors win.`);
     return true;
   }
-  // All traitors gone -> win
+  // All traitors gone -> win (REVEAL TOO)
   if(aliveTraitors===0){
+    revealTraitors(); // NEW: reveal who the traitors were that got caught
     announce(`All traitors eliminated. You win!`);
     return true;
   }
   // Traitors take control -> loss
   if(aliveTraitors >= (alivePlayers.length - aliveTraitors)){
-    revealTraitors(); // NEW: visually reveal traitors on loss
+    revealTraitors(); // reveal on loss
     announce(`Traitors took control. You lose.`);
     return true;
   }
@@ -354,16 +355,26 @@ function handlePlayerVote(targetId){
     if(i<planned.length){
       const {who, vote}=planned[i++]; addVote(vote, nameOf(who)); setTimeout(step, 550);
     }else{
+      // Resolve outcome (with tie detection)
       let maxVotes=-1, eliminated=null;
       Object.entries(tally).forEach(([id,v])=>{
         if(v>maxVotes){ maxVotes=v; eliminated=id; }
         else if(v===maxVotes){
+          // tie-break by higher suspicion
           if((S.suspicion[id]||0)>(S.suspicion[eliminated]||0)) eliminated=id;
         }
       });
+      const topCount = Math.max(...Object.values(tally));
+      const numAtTop = Object.values(tally).filter(v=>v===topCount).length;
+      const tieBreakUsed = numAtTop > 1;
+
       const isTraitor=S.traitors.has(eliminated);
       eliminate(eliminated, isTraitor, "VotedOut");
       renderAll();
+      if (tieBreakUsed) {
+        // Explain the draw resolution explicitly
+        logLine(`a deciding vote chose ${nameOf(eliminated)}.`);
+      }
       logLine(`Eliminated: ${nameOf(eliminated)} (${isTraitor?'Traitor':'Innocent'}).`);
 
       if(!isTraitor){
@@ -476,7 +487,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   window.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ document.getElementById('logModal').classList.remove('open'); }});
 });
 
-// ---------- Reveal traitors on loss (outline + optional image swap) ----------
+// ---------- Reveal traitors (outline + optional image swap) ----------
 function revealTraitors(){
   S.players.forEach(p=>{
     if(!S.traitors.has(p.id)) return;
