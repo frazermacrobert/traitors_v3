@@ -100,7 +100,7 @@ function startGame(){
     role:"Innocent", status:"Alive",
     avatar:`assets/pngs/${e.id}.png`,
     avatarSad:`assets/gone/${e.id}-sad.png`,
-    avatarTraitor:`assets/pngs/${e.id}-traitor.png`
+   avatarTraitor:`assets/pngs/traitor-revealed.png`
   }));
   S.players.forEach(p=>{ S.alive.add(p.id); S.history[p.id]=[]; });
 
