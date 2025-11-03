@@ -437,12 +437,12 @@ function announce(msg){
   const traitorNames = S.players.filter(p => S.traitors.has(p.id)).map(p => p.name);
   const traitorList = traitorNames.length ? `<br><br><strong>The traitors were:</strong> ${traitorNames.join(', ')}.` : '';
 
-  scenario.innerHTML = `<h2>Outcome</h2>
-    <div>${msg}${traitorList}</div>
-    <div class="footer" style="display:flex;justify-content:flex-end">
-      <button class="btn" onclick="location.reload()">Play Again</button>
-    </div>`;
-}
+ scenario.innerHTML = `<h2>Outcome</h2>
+  <div>${msg}${traitorList}</div>
+  <div class="footer" style="display:flex;justify-content:flex-end">
+    <button class="btn" onclick="location.reload()">Play Again</button>
+  </div>`;
+} 
 
 function renderAll(){ renderTopbar(); }
 
