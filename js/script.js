@@ -450,20 +450,32 @@ document.getElementById('restartBtn').onclick=()=>location.reload();
 
 window.addEventListener('DOMContentLoaded', async ()=>{
   await loadData();
-  const startModal=document.getElementById('startModal');
-  document.getElementById('startBtn').onclick=()=>{
-    const you=document.getElementById('playerSelect').value;
-    const diff=document.getElementById('difficulty').value;
-    const analysis=document.getElementById('analysisMode').value==='true';
-    const numT=parseInt(document.getElementById('numTraitors').value,10)||3;
-    const seedStr=document.getElementById('seed').value.trim();
-    let seed=0;
-    if(seedStr){ seed=0; for(let i=0;i<seedStr.length;i++){ seed=((seed<<5)-seed)+seedStr.charCodeAt(i); seed|=0; } if(seed<0) seed=-seed; }
-    else { seed=Math.floor(Math.random()*1e9); }
-    S.rng=mulberry32(seed); S.youId=you; S.difficulty=diff; S.analysis=analysis; S.numTraitors=numT;
-    startModal.classList.remove('open'); startGame();
+  const startModal = document.getElementById('startModal');
+
+  document.getElementById('startBtn').onclick = () => {
+    const you = document.getElementById('playerSelect').value;
+    const diff = document.getElementById('difficulty').value;
+    const analysis = document.getElementById('analysisMode').value === 'true';
+    const numT = parseInt(document.getElementById('numTraitors').value, 10) || 3;
+
+    // No seed field: just use a random seed behind the scenes
+    S.rng = mulberry32(Math.floor(Math.random() * 1e9));
+
+    S.youId = you;
+    S.difficulty = diff;
+    S.analysis = analysis;
+    S.numTraitors = numT;
+
+    startModal.classList.remove('open');
+    startGame();
   };
-  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ document.getElementById('logModal').classList.remove('open'); }});
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const logModal = document.getElementById('logModal');
+      if (logModal) logModal.classList.remove('open');
+    }
+  });
 });
 
 // ---------- Reveal traitors (outline + optional image swap) ----------
