@@ -76,3 +76,22 @@ hr{border:none;border-top:1px solid var(--rail);margin:12px 0}
   50% { transform: scale(1.03); }
   100% { transform: scale(1); }
 }
+
+/* Disable + feedback styles for Submit button */
+#answerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Shake animation when submitting without selecting */
+.shake {
+  animation: btn-shake 0.3s;
+}
+
+@keyframes btn-shake {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(-3px); }
+  50%  { transform: translateX(3px); }
+  75%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
