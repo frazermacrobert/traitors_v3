@@ -174,18 +174,15 @@ function doScenarioPhase() {
   const submitBtn = document.getElementById('answerBtn');
 
   submitBtn.onclick = () => {
-    // Prevent multiple submissions
     if (submitBtn.disabled) return;
 
     const sel = document.querySelector('input[name=scopt]:checked');
     if (!sel) {
-      // Shake animation when trying to submit with no selection
       submitBtn.classList.add('shake');
       setTimeout(() => submitBtn.classList.remove('shake'), 300);
       return;
     }
 
-    // Disable button after first valid click
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitted';
 
@@ -193,18 +190,32 @@ function doScenarioPhase() {
 
     if (pick === sc.correct) {
       logLine(`Scenario answered correctly.`);
-      if (S.analysis) {
-        logLine(`Analysis: ${sc.rationale_correct}`);
-      }
+      if (S.analysis) logLine(`Analysis: ${sc.rationale_correct}`);
       doActionsPhase();
     } else {
+      // When wrong: show rationale before elimination
       logLine(`Scenario wrong: You picked ${pick}.`);
-      if (S.analysis) {
-        logLine(`Analysis: ${sc.rationale_wrong}`);
-      }
-      eliminate(S.youId, false, 'VotedOut');
-      renderAll();
-      checkEnd();
+      if (S.analysis) logLine(`Analysis: ${sc.rationale_wrong}`);
+
+      // Create an overlay message explaining why
+      const explainDiv = document.createElement('div');
+      explainDiv.className = 'explain-overlay';
+      explainDiv.innerHTML = `
+        <div class="explain-dialog">
+          <h3>Why that was unsafe</h3>
+          <p>${sc.rationale_wrong}</p>
+          <button id="continueBtn" class="btn">Continue</button>
+        </div>
+      `;
+      document.body.appendChild(explainDiv);
+
+      // Wait for user to acknowledge before elimination
+      document.getElementById('continueBtn').onclick = () => {
+        explainDiv.remove();
+        eliminate(S.youId, false, 'VotedOut');
+        renderAll();
+        checkEnd();
+      };
     }
   };
 }
