@@ -77,6 +77,38 @@ hr{border:none;border-top:1px solid var(--rail);margin:12px 0}
   100% { transform: scale(1); }
 }
 
+/* Explanation overlay for wrong answers */
+.explain-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.explain-dialog {
+  background: #fff;
+  color: var(--ink);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  text-align: center;
+  animation: pop-in 0.25s ease-out;
+}
+
+.explain-dialog h3 {
+  margin-top: 0;
+  color: var(--red);
+}
+
+@keyframes pop-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
 /* Disable + feedback styles for Submit button */
 #answerBtn:disabled {
   opacity: 0.6;
