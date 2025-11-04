@@ -145,28 +145,66 @@ function checkEnd(){
   return false;
 }
 
-function doScenarioPhase(){
-  const container=document.getElementById('scenario');
-  const sc=S.scenarios[Math.floor(S.rng()*S.scenarios.length)];
-  if(!sc){ container.innerHTML=`<h2>Scenario</h2><div class="note">No scenarios available.</div>`; return; }
-  container.innerHTML=`<h2>Scenario</h2>
+function doScenarioPhase() {
+  const container = document.getElementById('scenario');
+  const sc = S.scenarios[Math.floor(S.rng() * S.scenarios.length)];
+
+  if (!sc) {
+    container.innerHTML = `<h2>Scenario</h2><div class="note">No scenarios available.</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <h2>Scenario</h2>
     <div>${sc.prompt}</div>
-    ${sc.options.map((opt,i)=>`<label class="option"><input type="radio" name="scopt" value="${String.fromCharCode(65+i)}"> <strong>${String.fromCharCode(65+i)}.</strong> ${opt}</label>`).join('')}
-    <div class="footer" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+    ${sc.options
+      .map(
+        (opt, i) =>
+          `<label class="option">
+            <input type="radio" name="scopt" value="${String.fromCharCode(65 + i)}">
+            <strong>${String.fromCharCode(65 + i)}.</strong> ${opt}
+          </label>`
+      )
+      .join('')}
+    <div class="footer" style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px">
       <button id="answerBtn" class="btn">Submit</button>
-    </div>`;
-  document.getElementById('answerBtn').onclick=()=>{
-    const sel=document.querySelector('input[name=scopt]:checked'); if(!sel) return;
-    const pick=sel.value;
-    if(pick===sc.correct){
+    </div>
+  `;
+
+  const submitBtn = document.getElementById('answerBtn');
+
+  submitBtn.onclick = () => {
+    // Prevent multiple submissions
+    if (submitBtn.disabled) return;
+
+    const sel = document.querySelector('input[name=scopt]:checked');
+    if (!sel) {
+      // Shake animation when trying to submit with no selection
+      submitBtn.classList.add('shake');
+      setTimeout(() => submitBtn.classList.remove('shake'), 300);
+      return;
+    }
+
+    // Disable button after first valid click
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitted';
+
+    const pick = sel.value;
+
+    if (pick === sc.correct) {
       logLine(`Scenario answered correctly.`);
-      if(S.analysis){ logLine(`Analysis: ${sc.rationale_correct}`); }
+      if (S.analysis) {
+        logLine(`Analysis: ${sc.rationale_correct}`);
+      }
       doActionsPhase();
-    }else{
+    } else {
       logLine(`Scenario wrong: You picked ${pick}.`);
-      if(S.analysis){ logLine(`Analysis: ${sc.rationale_wrong}`); }
-      eliminate(S.youId,false,"VotedOut");
-      renderAll(); checkEnd();
+      if (S.analysis) {
+        logLine(`Analysis: ${sc.rationale_wrong}`);
+      }
+      eliminate(S.youId, false, 'VotedOut');
+      renderAll();
+      checkEnd();
     }
   };
 }
