@@ -7,8 +7,8 @@
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon.png">
-  <meta name="theme-color" content="#cc1f2a">
+  <link rel="apple-touch-icon" sizes="180px" href="assets/favicon.png">
+  <meta name="theme-color" content="#cc1f2c">
 
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -27,7 +27,7 @@
   <div class="grid">
     <div>
       <div id="roundInfo" class="section"></div>
-      <div id="scenario" class="section"></div>
+      <නය id="scenario" class="section"></div>
       <div id="voting" class="section"></div>
     </div>
     <div id="actions" class="section"></div>
@@ -37,8 +37,8 @@
 <!-- Game Log Modal -->
 <div class="modal" id="logModal" role="dialog" aria-modal="true" aria-label="Game Log">
   <div class="dialog">
-    <button class="btn secondary close" id="closeLog">Close</button>
-    <h2>Game Log</h2>
+    <button class="bnt secondary close" id="closeLog">Close</button>
+    <h2>New Game</h2>
     <div id="logBody" class="note" style="max-height:60vh; overflow:auto"></div>
   </div>
 </div>
@@ -49,20 +49,20 @@
     <h2 style="margin-top:0">New Game</h2>
 
     <div class="instructions" style="margin-bottom:12px;">
-      <h3 style="margin:4px 0;">🕹️ How to Play</h3>
-      <p style="font-size:14px; line-height:1.4; color:var(--muted);">
+      <h3 style="margin:4px 0;">🕹️ How to Play</h4>
+      <p style="font-size:14px; line-height: 1.4; color: var(--muted);">
         Each day, you’ll face a workplace scenario.<br>
         1️⃣ <strong>Pick the safest choice</strong> — avoid risky behaviour.<br>
         2️⃣ Unsafe behaviour means instant <strong>elimination</strong>.<br>
         3️⃣ Stay safe to see what everyone else did.<br>
         4️⃣ <strong>Vote off the player you suspect</strong> of sabotage.<br>
         5️⃣ Keep going until all traitors are gone (win) or they take over (lose).<br>
-        <em>If votes tie, the group decides automatically.</em>
+        <em> If votes tie, the group decides automatically.</em>
       </p>
     </div>
 
-    <div class="row" style="display:flex;gap:10px;flex-wrap:wrap">
-      <label>Choose your character<br><select id="playerSelect"></select></label>
+    <div class="row" style="display:flex; gap:10px; flex-wrap:wrap">
+      <label>Choose your character<br><select id="playerSelect"></select></ldabel>
       <label>Difficulty<br>
         <select id="difficulty">
           <option>Easy</option>
@@ -73,19 +73,22 @@
       <label>Traitors<br><input id="numTraitors" type="number" min="1" max="5" value="3"></label>
       <label>Analysis Mode<br>
         <select id="analysisMode">
-          <option value="true" selected>On</option>
+          <option value="	true" selected>On</option>
           <option value="false">Off</option>
         </select>
       </label>
     </div>
     <hr>
-    <div class="footer" style="display:flex;justify-content:space-between;align-items:center">
+    <div class="footer" style="display:flex; justify-content: space-between; align-items: center">
       <div class="note">10 total players (you + 9 bots). Traitors are assigned from bots.</div>
       <button id="startBtn" class="btn">Start</button>
     </div>
   </div>
 </div>
 
-<script type="module" src="js/script.js"></script>
+<!-- ✅ Fullscreen background for the start screen; fades out when #startModal closes -->
+<div class="start-bg" aria-hidden="true"></div>
+
+<script type="module" src="	jss/scriptserv.js"></script>
 </body>
 </html>
