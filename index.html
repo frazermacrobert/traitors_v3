@@ -1,10 +1,24 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Who Let the Hack In? · Scarlettabbott</title><link rel="stylesheet" href="css/style.css"></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>The Cyber Traitors · Scarlettabbott</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon.png">
+  <meta name="theme-color" content="#cc1f2a">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
 <body>
 <div class="app">
   <div class="header">
-    <div><div class="badge">Scarlettabbott · Patchwork · Cyber Game Prototype</div><h1 class="title">InfoSec Training: The Cyber Traitors</h1></div>
+    <div>
+      <div class="badge">Scarlettabbott · Patchwork · Cyber Game Prototype</div>
+      <h1 class="title">InfoSec Training: The Cyber Traitors</h1>
+    </div>
     <button id="restartBtn" class="btn secondary">Restart</button>
   </div>
 
@@ -33,24 +47,38 @@
 <div class="modal open" id="startModal" role="dialog" aria-modal="true">
   <div class="dialog">
     <h2 style="margin-top:0">New Game</h2>
+
     <div class="instructions" style="margin-bottom:12px;">
-  <h3 style="margin:4px 0;">🕹️ How to Play</h3>
-  <p style="font-size:14px; line-height:1.4; color:var(--muted);">
-    Each day, you’ll face a workplace scenario.<br>
-    1️⃣ <strong>Pick the safest choice</strong> — avoid risky behaviour.<br>
-    2️⃣ Unsafe behaviour means instant <strong>elimination</strong>.<br>
-    3️⃣ Stay safe to see what everyone else did.<br>
-    4️⃣ <strong>Vote off the player you suspect</strong> of sabotage.<br>
-    5️⃣ Keep going until all traitors are gone (win) or they take over (lose).<br>
-    <em>If votes tie, the group decides automatically.</em>
-  </p>
-</div>
+      <h3 style="margin:4px 0;">🕹️ How to Play</h3>
+      <p style="font-size:14px; line-height:1.4; color:var(--muted);">
+        Each day, you’ll face a workplace scenario.<br>
+        1️⃣ <strong>Pick the safest choice</strong> — avoid risky behaviour.<br>
+        2️⃣ Unsafe behaviour means instant <strong>elimination</strong>.<br>
+        3️⃣ Stay safe to see what everyone else did.<br>
+        4️⃣ <strong>Vote off the player you suspect</strong> of sabotage.<br>
+        5️⃣ Keep going until all traitors are gone (win) or they take over (lose).<br>
+        <em>If votes tie, the group decides automatically.</em>
+      </p>
+    </div>
+
     <div class="row" style="display:flex;gap:10px;flex-wrap:wrap">
       <label>Choose your character<br><select id="playerSelect"></select></label>
-      <label>Difficulty<br><select id="difficulty"><option>Easy</option><option selected>Medium</option><option>Hard</option></select></label>
+      <label>Difficulty<br>
+        <select id="difficulty">
+          <option>Easy</option>
+          <option selected>Medium</option>
+          <option>Hard</option>
+        </select>
+      </label>
       <label>Traitors<br><input id="numTraitors" type="number" min="1" max="5" value="3"></label>
-      <label>Analysis Mode<br><select id="analysisMode"><option value="true" selected>On</option><option value="false">Off</option></select></label>
-    </div><hr>
+      <label>Analysis Mode<br>
+        <select id="analysisMode">
+          <option value="true" selected>On</option>
+          <option value="false">Off</option>
+        </select>
+      </label>
+    </div>
+    <hr>
     <div class="footer" style="display:flex;justify-content:space-between;align-items:center">
       <div class="note">10 total players (you + 9 bots). Traitors are assigned from bots.</div>
       <button id="startBtn" class="btn">Start</button>
@@ -58,4 +86,6 @@
   </div>
 </div>
 
-<script type="module" src="js/script.js"></script></body></html>
+<script type="module" src="js/script.js"></script>
+</body>
+</html>
