@@ -153,10 +153,8 @@ function doScenarioPhase(){
     <div>${sc.prompt}</div>
     ${sc.options.map((opt,i)=>`<label class="option"><input type="radio" name="scopt" value="${String.fromCharCode(65+i)}"> <strong>${String.fromCharCode(65+i)}.</strong> ${opt}</label>`).join('')}
     <div class="footer" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-      <button id="openLog" class="btn secondary" type="button">Game Log</button>
       <button id="answerBtn" class="btn">Submit</button>
     </div>`;
-  document.getElementById('openLog').onclick=openLogModal;
   document.getElementById('answerBtn').onclick=()=>{
     const sel=document.querySelector('input[name=scopt]:checked'); if(!sel) return;
     const pick=sel.value;
