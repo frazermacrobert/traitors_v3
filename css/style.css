@@ -137,18 +137,22 @@ body::before{
 }
 .dialog .close{ float:right; }
 
-/* Start-screen background image (visible only while start modal is open) */
+/* Start screen background: visible by default */
 .start-bg{
   position: fixed;
   inset: 0;
-  /* dim the image a touch so the modal pops */
-  background: linear-gradient(rgba(20,17,15,.30), rgba(20,17,15,.30)),
-              url('assets/background.jpg') center / cover no-repeat;
-  z-index: 1500;              /* above page content, below modal */
-  opacity: 0;
+  background:
+    linear-gradient(rgba(20,17,15,.30), rgba(20,17,15,.30)),
+    url('assets/background.jpg') center / cover no-repeat;
+  z-index: 1500;              /* above app, below modal */
+  opacity: 1;                 /* <-- visible by default */
   transition: opacity .35s ease;
-  pointer-events: none;       /* clicks go to modal */
+  pointer-events: none;
 }
+
+/* When the start modal closes, fade it out */
+#startModal:not(.open) + .start-bg { opacity: 0; }
+
 /* When any modal is open, show the start background */
 .modal.open ~ .start-bg{ opacity: 1; }
 
