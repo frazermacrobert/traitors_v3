@@ -8,7 +8,7 @@
   --card-bg:#ffffffd9; /* = rgba(255,255,255,.85) */
   --rail:rgba(0,0,0,.06);
 
-  /* Stronger background tones for animated gradient */
+
   --bg-a:#f9f2ec;
   --bg-b:#f6e7dc;
   --bg-c:#f1d7c7;
@@ -16,13 +16,13 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 
-/* ---- Animated warm gradient + felt grain overlay (stronger) ---- */
+
 body{
   margin:0;
   font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
   color:var(--ink);
 
-  /* higher-contrast multi-stop gradient that gently pans */
+
   background:
     linear-gradient(160deg, var(--bg-a) 0%, var(--bg-b) 40%, var(--bg-c) 100%);
   background-size: 250% 250%;          /* more range for the pan */
@@ -162,7 +162,7 @@ hr{border:none;border-top:1px solid var(--rail);margin:12px 0}
 /* Disable + feedback styles for Submit button */
 #answerBtn:disabled {
   opacity: 0.6;
-  cursor: not. allowed; /* kept as-is from your sheet to avoid surprise changes */
+  cursor: not-allowed; /* kept as-is from your sheet to avoid surprise changes */
 }
 
 /* Shake animation when submitting without selecting */
