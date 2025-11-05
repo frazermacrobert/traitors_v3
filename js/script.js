@@ -49,11 +49,10 @@ async function loadData(){
   populatePlayerSelect(S.all_employees);
   S.allEmployees = S.all_employees; // keep both for safety
   S.actions   = await safeJson('data/actions.json',[]);
-  const scRaw = await safeJson('data/scenarios.json',[]);
-  S.scenarios = scRaw.map(normalize).filter(Boolean);
-  if(!S.scenarios.length){alert('No valid scenarios found in data/scenarios.json')}
-  S.elimMsgs  = await safeJson('data/elimination_msgs.json',{});
-  function normalize(r){return normalizeScenario(r)}
+ const scRaw = await safeJson('data/scenarios.json', []);
+S.scenarios = (Array.isArray(scRaw) ? scRaw : []).map(normalizeScenario).filter(Boolean);
+if (!S.scenarios.length) { alert('No valid scenarios found in data/scenarios.json'); }
+S.elimMsgs = await safeJson('data/elimination_msgs.json', {});
 }
 function populatePlayerSelect(emps){
   const sel=document.getElementById('playerSelect'); if(!sel) return;
@@ -107,7 +106,6 @@ function checkEnd(){
 }
 
 /* ===== Scenario Phase ===== */
-function normalizeScenario(s){return s} // compat guard, real normalize used in loadData
 function doScenarioPhase(){
   const box=document.getElementById('scenario'); if(!box) return;
   const sc=S.scenarios.length? S.scenarios[Math.floor(S.rnd?S.rnd():S.rng()*S.scenarios.length)] : S.scenarios[Math.floor(S.rng()*S.scenarios.length)];
