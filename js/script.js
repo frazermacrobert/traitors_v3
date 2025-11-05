@@ -1,4 +1,4 @@
-// -------------------- Seeded RNG + helpers --------------------
+
 function mulberry32(a){return function(){var t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;}}
 function seededShuffle(arr,rng){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function pickRandom(arr,rng){return arr[Math.floor(rng()*arr.length)];}
@@ -10,7 +10,7 @@ function weightedPick(items, weights, rng){
   return items[items.length-1];
 }
 
-// ---- Scenario normalizer (accepts both shapes) ----
+
 function normalizeScenario(raw){
   if(!raw) return null;
   let options = Array.isArray(raw.options) ? raw.options.slice(0,3)
@@ -28,14 +28,14 @@ function normalizeScenario(raw){
   return { id: String(raw.id||""), prompt: String(raw.prompt||""), options, correct, rationale_correct, rationale_wrong };
 }
 
-// -------------------- Difficulty profile --------------------
+
 const DIFF={
   Easy   : {innocent_error:.04, traitor_rate:.50, influence_scale:.70, vote_noise:.05,  pattern_clarity:1.0},
   Medium : {innocent_error:.12, traitor_rate:.40, influence_scale:.50, vote_noise:.12,  pattern_clarity:.70},
   Hard   : {innocent_error:.20, traitor_rate:.30, influence_scale:.30, vote_noise:.18,  versatility:.0, pattern_clarity:.50}
 };
 
-// -------------------- Defaults --------------------
+
 function defaultInfluence(d){
   const m={"CEO":.75,"CFO":.68,"Exec Assistant":.65,"Project Management":.62,"Consultant":.60,"Finance":.56,"HR":.56,"Legal":.56,"Design":.52,"Content":.52,"Motion":.52,"Ops":.54,"Marketing":.54,"Business Development":.54,"IT":.58};
   return m[d]??.55;
@@ -48,7 +48,6 @@ function defaultBehaviour(d){
   return b;
 }
 
-// -------------------- Global State --------------------
 const S={
   allEmployees:[], actions:[], scenarios:[], elimMsgs:{},
   players:[], round:0, rng:Math.random, youId:null, traitors:new Set(),
@@ -60,7 +59,7 @@ const S={
   historyWindow:3
 };
 
-// -------------------- Data load --------------------
+
 async function loadData(){
   const [emps,acts,scens,elim] = await Promise.all([
     fetch('data/employees.json').then(r=>r.json()),
@@ -78,7 +77,7 @@ async function loadData(){
   }
   S.elimMsgs = (elim && typeof elim==='object') ? elim : {};
 
-  // Validate action buckets (non-blocking)
+
   const VALID=new HashSet?.()||null; // no-op fallback
   const bad=S.actions.filter(a=>!["safe","risky_innocent","traitor_sabotage","decoy","red_herring"].includes(a.bucket));
   if(bad.length) logLine(`Data warning: unknown action buckets -> ${bad.map(b=>b.id).join(', ')}`);
@@ -94,7 +93,7 @@ function populatePlayerSelect(emps){
   : emps.map(e=>`<option value="${e.id}">${e.name} — ${e.department}</option>`).join('');
 }
 
-// -------------------- Game flow --------------------
+
 function startGame(){
   S.log=[]; S.round=1; S.players=[]; S.suspicion={};
   S.alive.clear(); S.eliminated.clear(); S.traitors.clear(); S.elimReason={};
