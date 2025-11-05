@@ -261,19 +261,21 @@ function doScenarioPhase(){
     return;
   }
 
-  container.innerHTML = `
-    <h2>Scenario</h2>
-    <div>${escapeHtml(sc.prompt)}</div>
-    ${sc.options.map((opt,i)=>`
-      <label class="option">
-        <input type="radio" name="scopt" value="${String.fromCharCode(65+i)}">
-        <strong>${String.fromCharCode(65+i)}.</strong> ${escapeHtml(opt)}
-      </label>
-    `).join('')}
-    <div class="footer" style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px">
-      <button id="answerBtn" class="btn">Submit</button>
-    </div>
-  `;
+ 
+container.innerHTML = `
+  <h2>Scenario</h2>
+  <div>${escapeHtml(sc.prompt)}</div>
+  ${sc.options.map((opt, i) => `
+    <label class="option">
+      <input type="radio" name="scopt" value="${String.fromCharCode(65 + i)}">
+      <strong>${String.fromCharCode(65 + i)}.</strong> ${escapeHtml(opt)}
+    </label>
+  `).join('')}
+  <div class="footer" style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px">
+    <button id="answerBtn" class="btn">Submit</button>
+  </div>
+`;
+
 
   const submitBtn = document.getElementById('answerBtn');
   submitBtn.onclick = () => {
