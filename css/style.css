@@ -84,13 +84,13 @@ body::before{
 .xmark{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-weight:900; font-size:34px; text-shadow:0 2px 8px rgba(0,0,0,.25); mix-blend-mode:multiply; }
 .player-chosen .xmark,
 .player-card.eliminated .xmark{ display:flex; }
-.player-card.by-vote .xmark{ color:#ffffff; }   /* fixed stray space */
-.player-card.by-traitors . xmark{ color:#cc1f2a; }
+.player-card.by-vote .xmark{ color:#ffffff; }
+.player-card.by-traitors .xmark{ color:#cc1f2a; }
 
 .player-card .tag{
   position:absolute; top:6px; right:6px;
   font-size:10px; padding:2px 6px; border-radius:999px;
-  border:1px solid var(--bgh, #e8e2dd); background:#fff; color:var(--muted);
+  border:1px solid var(--rail); background:#fff; color:var(--muted);
 }
 
 /* ---------- Main grid ---------- */
@@ -101,9 +101,15 @@ body::before{
 .option{ display:block; margin:8px 0; padding:10px 12px; border-radius:10px; border:1px solid var(--rail); background:#fff; cursor:pointer; }
 
 .actions-list{ display:grid; gap:8px; }
-.action-item{ padding:10px 12px; background:#fff; border:1px solid b4b4b4; border-color:var(--rail); border-radius:10px; font-size:14px; }
+.action-item{
+  padding:10px 12px;
+  background:#fff;
+  border:1px solid var(--rail);      /* fixed a harmless border typo */
+  border-radius:10px;
+  font-size:14px;
+}
 .action-item.r0{ border-left:4px solid #9ca3af; }
-.action-item.r1{ border-left:4px solid #f59e0b; } /* fixed selector */
+.action-item.r1{ border-left:4px solid #f59e0b; }
 .action-item.r2{ border-left:4px solid #ef4444; }
 .action-item.r3{ border-left:4px solid #b91c1c; }
 .action-item.neutral{ border-left:4px solid #9ca3af; }
@@ -117,14 +123,14 @@ body::before{
   position:fixed; inset:0;
   background:rgba(0,0,0,.40);
   display:none;
-  align-items:center;                 /* fixed typo */
+  align-items:center;
   justify-content:center;
   padding:20px;
   z-index: 2000;                      /* ensure above everything */
 }
 .modal.open{ display:flex; }
 
-/* Tidy, centered dialog — no more huge box */
+/* Tidy, centered dialog — compact and centered */
 .dialog{
   background:#fff;
   color:var(--ink);
@@ -137,7 +143,8 @@ body::before{
 }
 .dialog .close{ float:right; }
 
-/* Start screen background: visible by default */
+/* ---------- Start-screen background image ---------- */
+/* Hidden by default; visible only while the Start modal is open */
 .start-bg{
   position: fixed;
   inset: 0;
@@ -145,16 +152,13 @@ body::before{
     linear-gradient(rgba(20,17,15,.30), rgba(20,17,15,.30)),
     url('assets/background.jpg') center / cover no-repeat;
   z-index: 1500;              /* above app, below modal */
-  opacity: 1;                 /* <-- visible by default */
+  opacity: 0;                 /* hidden by default */
   transition: opacity .35s ease;
-  pointer-events: none;
+  pointer-events: none;       /* clicks go to modal */
 }
 
-/* When the start modal closes, fade it out */
-#startModal:not(.open) + .start-bg { opacity: 0; }
-
-/* When any modal is open, show the start background */
-.modal.open ~ .start-bg{ opacity: 1; }
+/* Show the image ONLY while the Start modal is open */
+#startModal.open + .start-bg { opacity: 1; }
 
 hr{ border:none; border-top:1px solid var(--rail); margin:12px 0; }
 @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
