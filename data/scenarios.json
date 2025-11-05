@@ -142,7 +142,7 @@
   {
     "id": "S-015",
     "prompt": "You want to share design files with a client who struggles to access SharePoint.",
-    "option_a": "Send them a Dropbox link instead.",
+    "option_a": "Send them a WeTransfer link instead.",
     "option_b": "Ask IT to enable a secure guest access option.",
     "option_c": "Send it to their personal Gmail.",
     "correct": "B",
