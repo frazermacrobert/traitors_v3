@@ -20,6 +20,15 @@ Carcassonne's rotate-to-fit placement, and Slay the Spire / Balatro run structur
 - Saves use localStorage (meta + run in progress). Storage failures are ignored.
 - The tutorial is a rules sheet shown before the first run, not a guided scripted run (yet).
 
+## Rooms, rarity and decks (v2)
+- About 85 rooms in 7 families, each with its own job: Halls (blue) bend the draft, Gardens (green) grow Gems, Chambers (purple) restore Steps,
+  Corridors (orange) route cheaply, Shops (gold) handle Coins, Keys and trades, Cursed rooms (red) pay big with a sting, Wonders (white) break rules.
+- Four rarities (Common, Uncommon, Rare, Legendary) set how often a room is drawn into the random part of the deck and how its card is framed.
+- Each run's deck = the chosen Plans' core cards + Archive-unlocked rooms + 18 random rooms weighted by rarity (and by the Plans' family bias).
+- New mechanics: guaranteed family next draft, free-cost draft, +2-card peek, collapsing cells, toll changes, echo (repeat a neighbour's effect),
+  copy/add cards to the deck, burn cards, interest, conversions, standing passives (Observatory, Conservatory, Chapel).
+- Heirlooms last for one run. Archive unlocks (rooms, Plans, perks) are permanent. The Effects sheet shows all of this in one place.
+
 ## Structure
 - `js/engine/`: pure rules (`engine.js`), meta-progression (`meta.js`), seeded RNG.
 - `js/data/`: rooms, heirlooms, mansions/curses/deeds/decks/unlocks. Content is data plus small hook functions.

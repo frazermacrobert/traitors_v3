@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  newRun, act, openTargets, validRotations, rotateDoors, connectedSet, cellAt, roomDoors, isWon, vaultToll,
+  newRun, act, openTargets, validRotations, rotateDoors, connectedSet, cellAt, roomDoors, isWon, vaultToll, gemCost,
 } from '../js/engine/engine.js';
 import { newMeta, applyResult, buyUnlock, mansionUnlocked } from '../js/engine/meta.js';
 import { MANSIONS, DECKS } from '../js/data/mansions.js';
@@ -22,7 +22,7 @@ test('new run: entrance, vault, deck, door phase', () => {
   assert.equal(s.phase, 'door');
   assert.equal(cellAt(s, 7, 2).id, 'entrance');
   assert.equal(cellAt(s, 0, 2).id, 'vault');
-  assert.equal(s.deck.length, DECKS.standard.cards.length);
+  assert.equal(s.deck.length, DECKS.standard.cards.length + DECKS.standard.fill);
   const t = openTargets(s).map((x) => `${x.r},${x.c}`).sort();
   assert.deepEqual(t, ['6,2', '7,1', '7,3']);
 });
@@ -162,6 +162,38 @@ test('bot wins Hollow House at least sometimes', () => {
   let wins = 0;
   for (let i = 0; i < 60; i++) if (playOut(newRun({ seed: `w${i}` })).result.won) wins++;
   assert.ok(wins > 5, `wins=${wins}`);
+});
+
+test('new mechanics: free cost, guaranteed family, collapse, toll, echo', () => {
+  let s = run();
+  s.buffs.freeCost = 1;
+  s.buffs.nextFamily = 'violet';
+  s.deck.push('suite', 'trophy', 'ballroom');
+  s.res.gems = 0;
+  s = act(s, { type: 'select', r: 6, c: 2 });
+  assert.ok(s.pending.offers.some((id) => ROOMS[id].family === 'violet'));
+  assert.equal(gemCost(s, 'suite'), 0);
+  // toll house lowers the toll
+  let t = run();
+  t.deck.push('tollhouse', 'tollhouse', 'tollhouse');
+  t.res.gems = 5;
+  const before = vaultToll(t);
+  t = act(act(act(t, { type: 'select', r: 6, c: 2 }), { type: 'pick', index: 0 }), { type: 'place' });
+  assert.equal(vaultToll(t), before - 2);
+  // flooded cellar collapses empty neighbours
+  let f = run();
+  f.deck.push('flooded', 'flooded', 'flooded');
+  f = act(act(act(f, { type: 'select', r: 7, c: 1 }), { type: 'pick', index: 0 }), { type: 'place' });
+  assert.ok(cellAt(f, 7, 0)?.blocked || cellAt(f, 6, 1)?.blocked);
+  // mirror repeats a connected neighbour (a Guest Room next to the entrance)
+  let m = run();
+  m.cells[6 * 5 + 2] = { id: 'guest', rot: 2, doors: roomDoors('guest', 2) };
+  m.deck.push('mirror', 'mirror', 'mirror');
+  const st = m.res.steps;
+  m = act(act(act(m, { type: 'select', r: 7, c: 1 }), { type: 'pick', index: 0 }), { type: 'rotate', dir: 1 });
+  m.pending.rot = m.pending.rots.find((r) => roomDoors('mirror', r)[1] === 1);
+  m = act(m, { type: 'place' });
+  assert.ok(m.res.steps >= st - 1 - 1);
 });
 
 test('state is JSON-serialisable and actions are pure', () => {

@@ -17,12 +17,13 @@ export const MANSIONS = [
   {
     id: 'm1', name: 'Hollow House', blurb: 'An empty plot. Learn the ropes.',
     w: 5, h: 8, entrance: { r: 7, c: 2, rot: 0 }, vault: { r: 0, c: 2, rot: 2 },
-    blocked: [], presets: [], lockedCells: [], lockChance: (r) => (r <= 3 ? 0.12 : 0), curse: 'dust', toll: 7,
+    blocked: [], presets: [], lockedCells: [], lockChance: (r) => (r <= 2 ? 0.1 : 0), curse: 'dust', toll: 5,
+    start: (s) => { s.res.steps += 2; },
   },
   {
     id: 'm2', name: 'Crooked House', blurb: 'Rubble blocks the direct route.',
     w: 5, h: 8, entrance: { r: 7, c: 2, rot: 0 }, vault: { r: 0, c: 2, rot: 2 },
-    blocked: blocked([[4, 1], [4, 2], [2, 3], [1, 1]]),
+    blocked: blocked([[4, 1], [4, 2], [1, 1]]),
     presets: [{ r: 2, c: 2, id: 'passage', rot: 1 }, { r: 5, c: 4, id: 'guest', rot: 3 }],
     lockedCells: [], lockChance: (r) => (r <= 4 ? 0.15 : 0), curse: 'overgrown', toll: 6,
     start: (s) => { s.res.steps += 2; },
@@ -65,19 +66,18 @@ const rep = (obj) => Object.entries(obj).flatMap(([id, n]) => Array(n).fill(id))
 
 export const DECKS = {
   standard: {
-    id: 'standard', name: 'Standard Plans', text: 'A balanced set of rooms.',
+    id: 'standard', name: 'Standard Plans', text: 'A balanced core of 28 rooms, plus 18 random rooms from the pool each run.', fill: 18,
     cards: rep({
-      foyer: 2, parlour: 1, gallery: 1, study: 1, library: 1, atlas: 1,
-      herb: 2, fern: 1, courtyard: 1, greenhouse: 1, orchard: 1,
-      guest: 2, nursery: 1, dressing: 1, sunroom: 1, suite: 1,
-      passage: 2, bend: 2, junction: 2, crossway: 1, backstairs: 1,
-      tuckshop: 1, counting: 1, locksmith: 1, strongroom: 1,
-      furnace: 1, winecellar: 1, gambling: 1, boarded: 1,
-      trophy: 1, secret: 1,
+      foyer: 2, parlour: 1, study: 1, library: 1,
+      herb: 2, fern: 1, greenhouse: 1, terrace: 1,
+      guest: 2, nursery: 1, napnook: 1,
+      passage: 2, bend: 2, junction: 2, crossway: 1,
+      tuckshop: 1, strongroom: 1, counting: 1,
+      furnace: 1, winecellar: 1, trophy: 1,
     }),
   },
   gardener: {
-    id: 'gardener', name: "Gardener's Plans", text: 'Lots of Gardens and rich rooms; fewer Corridors.',
+    id: 'gardener', name: "Gardener's Plans", text: 'Lots of Gardens and rich rooms; fewer Corridors.', bias: { green: 2.5, amber: 0.5 },
     cards: rep({
       foyer: 2, parlour: 1, study: 1, library: 1,
       herb: 3, fern: 2, courtyard: 2, greenhouse: 2, orchard: 2,
@@ -88,7 +88,7 @@ export const DECKS = {
     }),
   },
   architect: {
-    id: 'architect', name: "Architect's Plans", text: 'Every draft shows 4 cards, but start with 3 fewer Steps.',
+    id: 'architect', name: "Architect's Plans", text: 'Every draft shows 4 cards, but start with 3 fewer Steps.', bias: { amber: 1.5, ivory: 1.5 },
     drawCount: (n) => n + 1, start: (s) => { s.res.steps -= 3; },
     cards: rep({
       foyer: 2, gallery: 1, study: 1, atlas: 1, drawingroom: 1,
@@ -100,7 +100,7 @@ export const DECKS = {
     }),
   },
   nightwatch: {
-    id: 'nightwatch', name: 'Night Watch Plans', text: 'Start with +2 Keys and +2 Coins. More Cursed rooms.',
+    id: 'nightwatch', name: 'Night Watch Plans', text: 'Start with +2 Keys and +2 Coins. More Cursed rooms.', bias: { crimson: 2.5, gold: 1.5 },
     start: (s) => { s.res.keys += 2; s.res.coins += 2; },
     cards: rep({
       foyer: 2, parlour: 1, gallery: 1, study: 1, library: 1,
@@ -130,6 +130,9 @@ export const UNLOCKS = [
   { id: 'r_observatory', kind: 'room', ref: 'observatory', cost: 30 },
   { id: 'p_heirloom', kind: 'perk', ref: 'heirloom', cost: 40, name: 'Family Chest', text: 'Start every run by choosing 1 of 3 Heirlooms.' },
   { id: 'r_architect', kind: 'room', ref: 'architect', cost: 35 },
+  { id: 'r_conservatory', kind: 'room', ref: 'conservatory', cost: 40 },
+  { id: 'r_chapel', kind: 'room', ref: 'chapel', cost: 40 },
+  { id: 'r_mirrors', kind: 'room', ref: 'mirrors', cost: 50 },
   { id: 'd_architect', kind: 'deck', ref: 'architect', cost: 45 },
 ];
 

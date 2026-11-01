@@ -1,7 +1,7 @@
 // Pure, deterministic game engine. No DOM. State is plain JSON.
 // act(state, action) returns a NEW state, or throws on an invalid action.
 
-import { ROOMS, SHAPES } from '../data/rooms.js';
+import { ROOMS, SHAPES, RARITIES, isDraftable } from '../data/rooms.js';
 import { HEIRLOOMS, MAX_HEIRLOOMS } from '../data/heirlooms.js';
 import { MANSIONS, CURSES, DEEDS, DECKS, PERKS } from '../data/mansions.js';
 import { rand, shuffle, hashSeed } from './rng.js';
@@ -46,9 +46,21 @@ export function modValue(s, hook, base, ...args) {
   for (const m of getMods(s)) if (typeof m[hook] === 'function') v = m[hook](v, s, ...args);
   return v;
 }
-export const gemCost = (s, id) => Math.max(0, modValue(s, 'gemCost', ROOMS[id].cost, ROOMS[id]));
+export const gemCost = (s, id) => (s.pending && s.pending.free ? 0 : Math.max(0, modValue(s, 'gemCost', ROOMS[id].cost, ROOMS[id])));
 export const shopPrice = (s, p) => Math.max(0, modValue(s, 'shopPrice', p));
-export const drawCount = (s) => Math.max(1, modValue(s, 'drawCount', BASE_DRAW) + (s.buffs.extraDraw > 0 ? 1 : 0));
+export const drawCount = (s) => Math.max(1, modValue(s, 'drawCount', BASE_DRAW)
+  + (s.buffs.extraDraw > 0 ? 1 : 0) + (s.buffs.bigDraw > 0 ? 2 : 0) - (s.buffs.smallDraw > 0 ? 1 : 0));
+
+// Weighted random room from the run's pool.
+export function randomRoom(s, pred = () => true) {
+  const opts = s.pool.filter((id) => pred(ROOMS[id]));
+  if (!opts.length) return null;
+  const bias = DECKS[s.deckId].bias || {};
+  const w = opts.map((id) => RARITIES[ROOMS[id].rarity].weight * (bias[ROOMS[id].family] || 1));
+  let x = rand(s) * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < opts.length; i++) { x -= w[i]; if (x <= 0) return opts[i]; }
+  return opts[opts.length - 1];
+}
 
 // ---------- setup ----------
 export function newRun({ seed = Date.now(), mansionId = 'm1', deed = 0, deckId = 'standard', unlockedRooms = [], perks = [] } = {}) {
@@ -59,7 +71,8 @@ export function newRun({ seed = Date.now(), mansionId = 'm1', deed = 0, deckId =
     w: m.w, h: m.h, cells: Array(m.w * m.h).fill(null),
     locks: {}, lockedCells: {}, entrance: { r: m.entrance.r, c: m.entrance.c }, vault: { r: m.vault.r, c: m.vault.c },
     res: { steps: 16, gems: 1, keys: 1, coins: 0, rerolls: 1 },
-    deck: [], discard: [], heirlooms: [], buffs: { extraDraw: 0, freeDraft: 0 }, counters: {},
+    deck: [], discard: [], heirlooms: [], counters: {}, pool: [], tollDelta: 0, lastPlaced: null,
+    buffs: { extraDraw: 0, bigDraw: 0, smallDraw: 0, freeDraft: 0, freeCost: 0, nextFamily: null, gardenDouble: 0 },
     phase: 'door', pending: null, queue: [], shop: null, heirloomOffer: null,
     drafts: 0, placed: 0, reshuffles: 0, bonus: 0, log: [], result: null,
   };
@@ -68,7 +81,9 @@ export function newRun({ seed = Date.now(), mansionId = 'm1', deed = 0, deckId =
   setCell(s, m.entrance.r, m.entrance.c, mk('entrance', m.entrance.rot, true));
   setCell(s, m.vault.r, m.vault.c, mk('vault', m.vault.rot, true));
   for (const p of m.presets) setCell(s, p.r, p.c, mk(p.id, p.rot, true));
+  s.pool = Object.keys(ROOMS).filter((id) => isDraftable(id) && (!ROOMS[id].unlock || unlockedRooms.includes(id)));
   s.deck = [...DECKS[deckId].cards, ...unlockedRooms];
+  for (let i = 0; i < (DECKS[deckId].fill ?? 18); i++) s.deck.push(randomRoom(s));
   for (const mod of getMods(s)) if (mod.start) mod.start(s);
   for (const p of perks) if (PERKS[p]) PERKS[p].start(s);
   s.res.steps = Math.max(1, s.res.steps);
@@ -159,6 +174,16 @@ function reshuffle(s) {
   for (const m of getMods(s)) if (m.onReshuffle) m.onReshuffle(s);
   log(s, `The house rearranges: deck reshuffled (−${pen} Steps).`);
 }
+// Make sure one offer is of the given family: pull it from the deck, discard, or the pool.
+function ensureFamily(s, offers, fam) {
+  if (!offers.length || offers.some((id) => ROOMS[id].family === fam)) return;
+  for (const pile of ['deck', 'discard']) {
+    const i = s[pile].findIndex((id) => ROOMS[id].family === fam);
+    if (i >= 0) { const [id] = s[pile].splice(i, 1); s.deck.unshift(offers.pop()); offers.push(id); return; }
+  }
+  const id = randomRoom(s, (r) => r.family === fam);
+  if (id) { s.deck.unshift(offers.pop()); offers.push(id); }
+}
 function draw(s, n) {
   const out = [];
   for (let i = 0; i < n; i++) {
@@ -174,7 +199,8 @@ function makeCtx(s, r, c, room) {
     s, r, c, room,
     rand: () => rand(s),
     gain(res, n) {
-      const amt = modValue(s, 'gainAmount', n, { res, room });
+      let amt = modValue(s, 'gainAmount', n, { res, room });
+      if (ctx.double && res === 'gems' && amt > 0) amt *= 2;
       if (!amt) return;
       s.res[res] = Math.max(0, s.res[res] + amt);
       if (res === 'gems' && amt > 0) s.bonus += amt;
@@ -183,6 +209,36 @@ function makeCtx(s, r, c, room) {
     queue(type) { s.queue.push(type); },
     neighbors: () => neighbors(s, r, c),
     placed: (pred) => s.cells.filter((x) => x && x.id && !['entrance', 'vault'].includes(x.id) && pred(ROOMS[x.id])),
+    onEdge: () => r === 0 || c === 0 || r === s.h - 1 || c === s.w - 1,
+    toll(n) { s.tollDelta = (s.tollDelta || 0) + n; log(s, `Vault toll ${n > 0 ? 'rises' : 'drops'} by ${Math.abs(n)}.`); },
+    burn(n) { for (let i = 0; i < n; i++) burnWorst(s); },
+    addCards(ids) { s.discard.push(...ids); log(s, `Added ${ids.map((i) => ROOMS[i].name).join(', ')} to your discard pile.`); },
+    addRandom(n, pred) {
+      const got = [];
+      for (let i = 0; i < n; i++) { const id = randomRoom(s, pred); if (id) got.push(id); }
+      if (got.length) ctx.addCards(got);
+    },
+    collapse(n) {
+      const v = cellAt(s, s.vault.r, s.vault.c);
+      const vd = v.doors.findIndex(Boolean);
+      const keep = key(s.vault.r + DIRS[vd][0], s.vault.c + DIRS[vd][1]);
+      const empties = shuffle(s, DIRS.map(([dr, dc]) => ({ r: r + dr, c: c + dc }))
+        .filter((p) => cellAt(s, p.r, p.c) === null && key(p.r, p.c) !== keep));
+      empties.slice(0, n).forEach((p) => setCell(s, p.r, p.c, { blocked: true, collapsed: true }));
+      if (empties.length && n) log(s, `${Math.min(n, empties.length)} cell(s) collapsed.`);
+    },
+    unlockAround() {
+      for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        for (let d = 0; d < 4; d++) delete s.locks[lockKey(nr, nc, d)];
+        delete s.lockedCells[key(nr, nc)];
+      }
+      for (let d = 0; d < 4; d++) delete s.locks[lockKey(r, c, d)];
+    },
+    echo(n) {
+      const ns = shuffle(s, neighbors(s, r, c).filter((x) => x.connected && x.room.onPlace && !x.room.echo)).slice(0, n);
+      for (const x of ns) { log(s, `Echo: ${x.room.name}.`); x.room.onPlace(makeCtx(s, x.r, x.c, x.room)); }
+    },
     purge(pred) {
       const before = s.deck.length + s.discard.length;
       s.deck = s.deck.filter((id) => !pred(ROOMS[id]));
@@ -194,7 +250,7 @@ function makeCtx(s, r, c, room) {
 }
 
 // ---------- flow ----------
-export const vaultToll = (s) => Math.max(0, modValue(s, 'toll', mansionById(s.mansionId).toll || 0));
+export const vaultToll = (s) => Math.max(0, modValue(s, 'toll', mansionById(s.mansionId).toll || 0) + (s.tollDelta || 0));
 export const vaultConnected = (s) => connectedSet(s).has(key(s.vault.r, s.vault.c));
 export function isWon(s) { return vaultConnected(s) && s.res.gems >= vaultToll(s); }
 
@@ -202,7 +258,7 @@ function canContinue(s) {
   if (s.res.steps <= 0 && !(s.buffs.freeDraft > 0)) return { ok: false, why: 'steps' };
   const ts = openTargets(s);
   if (!ts.length) return { ok: false, why: 'sealed' };
-  const freeLock = s.heirlooms.includes('skeleton') && (s.counters.skeleton || 0) < 2;
+  const freeLock = getMods(s).some((m) => m.canFreeLock && m.canFreeLock(s));
   if (ts.every((t) => t.locked) && s.res.keys <= 0 && !freeLock) return { ok: false, why: 'locked' };
   return { ok: true };
 }
@@ -265,7 +321,6 @@ const SHOP_ITEMS = [
   { kind: 'heirloom', price: 7 },
   { kind: 'card', price: 2 },
 ];
-const CARD_POOL = ['suite', 'library', 'orchard', 'crossway', 'secret', 'trophy', 'sunroom', 'courtyard', 'locksmith', 'guest'];
 function makeShop(s) {
   const items = shuffle(s, SHOP_ITEMS.map((x) => ({ ...x }))).slice(0, 4);
   for (const it of items) {
@@ -275,13 +330,13 @@ function makeShop(s) {
       it.id = opts[Math.floor(rand(s) * opts.length)];
       it.label = `Heirloom: ${HEIRLOOMS[it.id].name}`;
     }
-    if (it.kind === 'card') { it.id = CARD_POOL[Math.floor(rand(s) * CARD_POOL.length)]; it.label = `Add ${ROOMS[it.id].name} to deck`; }
+    if (it.kind === 'card') { it.id = randomRoom(s, (r) => r.rarity !== 'common'); it.label = `Add ${ROOMS[it.id].name} (${ROOMS[it.id].rarity})`; }
     it.price = shopPrice(s, it.price);
     it.sold = false;
   }
   return { items };
 }
-const WORST_ORDER = ['rubble', 'furnace', 'boarded', 'gambling', 'passage', 'bend', 'closet'];
+const WORST_ORDER = ['rubble', 'furnace', 'servants', 'haunted', 'boarded', 'gambling', 'passage', 'bend', 'foyer'];
 function burnWorst(s) {
   for (const id of WORST_ORDER) {
     for (const pile of ['deck', 'discard']) {
@@ -316,9 +371,12 @@ export function act(prev, a) {
       if (cost > s.res.steps) throw new Error('Not enough Steps');
       s.res.steps -= cost;
       const n = drawCount(s);
-      if (s.buffs.extraDraw > 0) s.buffs.extraDraw--;
+      for (const b of ['extraDraw', 'bigDraw', 'smallDraw']) if (s.buffs[b] > 0) s.buffs[b]--;
       const offers = draw(s, n);
-      s.pending = { r: t.r, c: t.c, dirs: t.dirs, offers, pick: null, rots: null, rot: null };
+      if (s.buffs.nextFamily) { ensureFamily(s, offers, s.buffs.nextFamily); s.buffs.nextFamily = null; }
+      const free = s.buffs.freeCost > 0;
+      if (free) s.buffs.freeCost--;
+      s.pending = { r: t.r, c: t.c, dirs: t.dirs, offers, pick: null, rots: null, rot: null, free };
       s.phase = 'card';
       return s;
     }
@@ -384,13 +442,15 @@ export function act(prev, a) {
         if (!cell.doors[d]) continue;
         const nr = p.r + DIRS[d][0], nc = p.c + DIRS[d][1];
         if (cellAt(s, nr, nc) !== null) continue;
-        if (room.lockExits || rand(s) < chance) s.locks[lockKey(p.r, p.c, d)] = true;
+        if (!room.noLock && (room.lockExits || rand(s) < chance)) s.locks[lockKey(p.r, p.c, d)] = true;
       }
       s.pending = null;
       log(s, `Placed ${room.name}.`);
       const ctx = makeCtx(s, p.r, p.c, room);
+      if (room.family === 'green' && s.buffs.gardenDouble > 0) { ctx.double = true; s.buffs.gardenDouble--; }
       if (room.onPlace) room.onPlace(ctx);
       for (const mod of getMods(s)) if (mod.onPlace) mod.onPlace(ctx);
+      if (id !== 'closet') s.lastPlaced = id;
       advance(s);
       return s;
     }
