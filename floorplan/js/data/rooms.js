@@ -11,14 +11,14 @@ export const SHAPES = {
 
 // Each family has its own job.
 export const FAMILIES = {
-  blue: { name: 'Hall', color: '#5aa9ff', deep: '#123a73', role: 'Bend the draft: see more, pick better, shape your deck.' },
-  green: { name: 'Garden', color: '#45d483', deep: '#0f4a33', role: 'Grow Gems, especially next to other Gardens.' },
-  violet: { name: 'Chamber', color: '#b28cff', deep: '#35215f', role: 'Restore Steps.' },
-  amber: { name: 'Corridor', color: '#ffae4a', deep: '#5a3510', role: 'Cheap routing, free moves.' },
-  gold: { name: 'Shop', color: '#ffd84a', deep: '#5a4a0c', role: 'Coins, Keys, trades and shops.' },
-  crimson: { name: 'Cursed', color: '#ff5d6c', deep: '#5c1520', role: 'Big rewards with a sting.' },
-  ivory: { name: 'Wonder', color: '#f4ecd6', deep: '#4a4433', role: 'Rare rule-breakers.' },
-  special: { name: 'Landmark', color: '#9fd3ff', deep: '#1a3558', role: '' },
+  blue: { name: 'Hall', color: '#6f9fe0', deep: '#2c4f8a', role: 'Bend the draft: see more, pick better, shape your deck.' },
+  green: { name: 'Garden', color: '#7cc47a', deep: '#2f6b3a', role: 'Grow Gems, especially next to other Gardens.' },
+  violet: { name: 'Chamber', color: '#b693e0', deep: '#5b3a8c', role: 'Restore Steps.' },
+  amber: { name: 'Corridor', color: '#f0b45a', deep: '#8a5a17', role: 'Cheap routing, free moves.' },
+  gold: { name: 'Shop', color: '#f6d861', deep: '#86701a', role: 'Coins, Keys, trades and shops.' },
+  crimson: { name: 'Cursed', color: '#ec7062', deep: '#8a2a22', role: 'Big rewards with a sting.' },
+  ivory: { name: 'Wonder', color: '#efe8d6', deep: '#6b6250', role: 'Rare rule-breakers.' },
+  special: { name: 'Landmark', color: '#c9d3cf', deep: '#4a5552', role: '' },
 };
 
 export const RARITIES = {

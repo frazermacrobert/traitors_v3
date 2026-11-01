@@ -13,6 +13,19 @@ with blocked cells, locked cells and **?** mystery cells, a **goal** (hold N Gem
 - Meta upgrades are capped and smaller; mansions are difficulty tiers rather than fixed layouts.
 - Settings: sound toggle and **Restart game** (two-step, erases all progress). V1 saves reset with up to 60 Ink credit.
 
+### Art direction (V2.1): "the Steward's drawings"
+Researched what makes generated UI read as generic (dark navy + cyan glow, purple-blue gradients, glassmorphism, emoji as art,
+rounded cards everywhere) and replaced all of it with a look taken from the subject itself:
+- Rooms are **architectural floor-plan tiles**: solid black walls (poché), dashed door-swing arcs, furniture drawn as plan symbols
+  (beds, tables, baths, shelves, stairs…) over a flat gouache wash with comic halftone shading. ~85 bespoke recipes, all drawn in code.
+- The board is a **vellum drawing sheet** taped over **bottle-green damask wallpaper**, with an architect's title block.
+- Open doorways are **red-pencil proposals**; locks are red padlocks; Dread is a red hatched gauge.
+- UI pieces are printed paper cut-outs: thick ink outlines, hard offset shadows, slight hand-placed rotation (comic-book energy,
+  in the spirit of Ticket to Earth's bold, readable style).
+- Type: Archivo Black (display), Archivo (body), Architects Daughter (hand annotations, the Steward's speech balloons).
+- Remaining emoji (heirlooms, events) are rendered monochrome to sit in the ink style.
+- Tap guard: actions whose phase no longer matches are ignored and the screen re-syncs (fix for "Nothing to place").
+
 Not yet done from the V2 plan: custom illustrated icon set, Pact-style modifiers, Daily mansion, Codex, room upgrades, secret rooms.
 
 ---

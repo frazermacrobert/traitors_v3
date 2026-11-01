@@ -14,7 +14,7 @@ import { UPGRADES } from '../data/progression.js';
 import { ROOMS, FAMILIES, SHAPES, RARITIES } from '../data/rooms.js';
 import { HEIRLOOMS, MAX_HEIRLOOMS } from '../data/heirlooms.js';
 import { MANSIONS, DEEDS, DECKS, UNLOCKS } from '../data/mansions.js';
-import { roomSvg, shapeSvg, gradientDefs, esc } from './svg.js';
+import { roomSvg, shapeSvg, gradientDefs, esc, icon } from './svg.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -57,7 +57,12 @@ function toast(msg, err = false) {
 }
 const buzz = (ms = 12) => { try { navigator.vibrate?.(ms); } catch { /* ignore */ } };
 
-const RES_ICON = { steps: '👣', gems: '💎', keys: '🗝️', coins: '🪙', rerolls: '🎲' };
+const RES_ICON = { steps: icon('steps'), gems: icon('gems'), keys: icon('keys'), coins: icon('coins'), rerolls: icon('rerolls') };
+const STEWARD_FACE = `<svg class="face" viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="2" width="22" height="16" fill="#1b1a1f"/><rect x="8" y="16" width="32" height="5" fill="#1b1a1f"/>
+  <ellipse cx="24" cy="31" rx="13" ry="14" fill="#f2dcc4" stroke="#1b1a1f" stroke-width="2.5"/><circle cx="19" cy="29" r="2" fill="#1b1a1f"/>
+  <circle cx="29" cy="29" r="4.5" fill="#e4eadc" stroke="#1b1a1f" stroke-width="2"/><circle cx="29" cy="29" r="1.6" fill="#1b1a1f"/><path d="M33 31 q3 6 1 12" fill="none" stroke="#1b1a1f" stroke-width="1.4"/>
+  <path d="M16 38 q8 -4 16 0" fill="none" stroke="#1b1a1f" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+const stewardHtml = (s) => (s.steward ? `<div class="steward">${STEWARD_FACE}<i>${esc(s.steward)}</i></div>` : '');
 
 // ---------- actions ----------
 function doAct(action) {
@@ -68,6 +73,7 @@ function doAct(action) {
     toast(e.message, true);
     sfx('error');
     buzz([20, 40, 20]);
+    render(); // resync the screen with the real state
     return;
   }
   const s = ui.run;
@@ -89,7 +95,7 @@ function doAct(action) {
       .map(([k, d], i) => ({ r, c, i, neg: d < 0, text: `${d > 0 ? '+' : ''}${d}${RES_ICON[k]}` }));
     buzz(15);
   } else if (action.type === 'select') {
-    ui.popups = before.res.steps !== s.res.steps ? [{ r: action.r, c: action.c, i: 0, neg: true, text: `−${before.res.steps - s.res.steps}👣` }] : [];
+    ui.popups = before.res.steps !== s.res.steps ? [{ r: action.r, c: action.c, i: 0, neg: true, text: `−${before.res.steps - s.res.steps}${RES_ICON.steps}` }] : [];
   }
   const fresh = Math.min(s.log.length, (s.logCount || 0) - (before.logCount || 0));
   const interesting = (fresh > 0 ? s.log.slice(-fresh) : []).filter((l) => !l.startsWith('Placed'));
@@ -134,12 +140,13 @@ function renderTitle() {
     .map(([id, rot]) => `<div>${roomSvg(id, roomDoors(id, rot), { label: false })}</div>`).join('');
   return `<section class="screen"><div class="title-wrap">
     <div class="title-tiles" aria-hidden="true">${tiles}</div>
-    <div class="logo">Floorplan</div>
+    <div class="logo">Floor&shy;plan</div>
+    <div class="dimline">three floors · one vault</div>
     <p class="tag">Grandfather's house rebuilds itself every night. Draft its rooms, survive three floors, and open the Vault.</p>
     <div class="title-buttons">
       ${ui.run ? `<button class="btn primary" data-a="resume">Continue · Night ${ui.run.night} of ${NIGHTS}</button>` : ''}
       <button class="btn ${ui.run ? '' : 'primary'}" data-a="go" data-to="select">${ui.run ? 'New run' : m.runs ? 'Continue game' : 'New game'}</button>
-      <button class="btn ${canAffordSomething(m) ? 'gold' : ''}" data-a="go" data-to="archive">Archive · 🖋 ${m.ink} Ink${canAffordSomething(m) ? ' · upgrade ready' : ''}</button>
+      <button class="btn ${canAffordSomething(m) ? 'gold' : ''}" data-a="go" data-to="archive">Archive · ${icon('ink')} ${m.ink} Ink${canAffordSomething(m) ? ' · upgrade ready' : ''}</button>
       <div class="row"><button class="btn ghost grow" data-a="help">How to play</button><button class="btn ghost grow" data-a="settings">Settings</button></div>
     </div>
     <div class="stats">${m.runs} runs · ${m.wins} wins</div>
@@ -169,8 +176,8 @@ function minimap(m) {
   return `<div class="minimap" style="grid-template-columns:repeat(${m.w},9px)">${cells.join('')}</div>`;
 }
 
-const RES_ICON2 = { gems: '💎', coins: '🪙', keys: '🗝️' };
-const goalChip = (g) => (g.kind === 'wing' ? `🏛️${g.n}` : `${RES_ICON2[g.res]}${g.n}`);
+const RES_ICON2 = { gems: icon('gems'), coins: icon('coins'), keys: icon('keys') };
+const goalChip = (g) => (g.kind === 'wing' ? `${icon('wing')}${g.n}` : `${RES_ICON2[g.res]}${g.n}`);
 
 function renderSelect() {
   const sel = ui.meta.last;
@@ -237,7 +244,7 @@ function renderArchive() {
     .map(([k, l]) => `<button class="btn small ${ui.tab === k ? 'on' : ''}" data-a="tab" data-id="${k}">${l}</button>`).join('');
   const body = ui.tab === 'upgrades' ? renderUpgrades() : ui.tab === 'blueprints' ? renderBlueprints() : renderUnlocks();
   return `<section class="screen">
-    <div class="topbar"><button class="icon-btn" data-a="go" data-to="title" aria-label="Back">←</button><h2>Archive</h2><span class="chip">🖋 ${ui.meta.ink} Ink</span></div>
+    <div class="topbar"><button class="icon-btn" data-a="go" data-to="title" aria-label="Back">←</button><h2>Archive</h2><span class="chip">${icon('ink')} ${ui.meta.ink} Ink</span></div>
     <div class="seg">${tabs}</div>
     ${body}
   </section>`;
@@ -253,7 +260,7 @@ function renderUpgrades() {
       <div class="grow"><h3>${esc(u.name)}</h3>
         <div class="muted" style="font-size:13px">${lvl ? esc(u.text(lvl)) : `Next: ${esc(u.text(1))}`}${lvl && cost !== null ? ` <span style="opacity:.7">→ ${esc(u.text(lvl + 1))}</span>` : ''}</div>
         <div class="pips">${pips}</div></div>
-      ${cost === null ? '<span class="chip good">Max</span>' : `<button class="btn small ${ui.meta.ink >= cost ? 'gold' : ''}" data-a="upg" data-id="${u.id}" ${ui.meta.ink < cost ? 'disabled' : ''}>🖋 ${cost}</button>`}
+      ${cost === null ? '<span class="chip good">Max</span>' : `<button class="btn small ${ui.meta.ink >= cost ? 'gold' : ''}" data-a="upg" data-id="${u.id}" ${ui.meta.ink < cost ? 'disabled' : ''}>${icon('ink')} ${cost}</button>`}
     </div>`;
   }).join('');
   return `<p class="muted" style="margin:0">Permanent. Every run earns Ink, win or lose, so every attempt makes the next one stronger.</p><div class="list">${rows}</div>`;
@@ -287,7 +294,7 @@ function renderUnlocks() {
         <div class="body"><div class="nm">${esc(name)}</div><div class="meta">${u.kind === 'deck' ? 'Starting plans' : 'Permanent perk'}</div><div class="tx">${esc(text)}</div></div></div></div>`;
     }
     return `<div class="unlock">${top}
-      ${owned ? '<span class="chip good" style="justify-content:center">✓ Owned</span>' : `<button class="btn small ${ui.meta.ink >= u.cost ? 'gold' : ''}" data-a="buy" data-id="${u.id}" ${ui.meta.ink < u.cost ? 'disabled' : ''}>🖋 ${u.cost} Ink</button>`}
+      ${owned ? '<span class="chip good" style="justify-content:center">✓ Owned</span>' : `<button class="btn small ${ui.meta.ink >= u.cost ? 'gold' : ''}" data-a="buy" data-id="${u.id}" ${ui.meta.ink < u.cost ? 'disabled' : ''}>${icon('ink')} ${u.cost} Ink</button>`}
     </div>`;
   }).join('');
   return `<p class="muted" style="margin:0">Permanent. New rooms join the random pool; new Plans and perks apply to every run.</p>
@@ -302,28 +309,29 @@ function renderRun() {
   const resBox = (k, ic, label) => {
     const isGoal = gr === k;
     const pct = isGoal && tgt ? Math.min(100, (100 * s.res[k]) / tgt) : 0;
-    return `<div class="res ${isGoal && s.res[k] >= tgt ? 'met' : ''} ${isGoal ? 'goalres' : ''} ${ui.bumped.includes(k) ? 'bump' : ''}"><span class="v"><span class="ic">${ic}</span>${s.res[k]}${isGoal ? `<span style="font-size:12px;opacity:.6">/${tgt}</span>` : ''}</span><small>${label}</small>${isGoal ? `<span class="bar" style="width:${pct}%"></span>` : ''}</div>`;
+    return `<div class="res ${k} ${isGoal && s.res[k] >= tgt ? 'met' : ''} ${isGoal ? 'goalres' : ''} ${ui.bumped.includes(k) ? 'bump' : ''}"><span class="v"><span class="ic">${ic}</span>${s.res[k]}${isGoal ? `<span style="font-size:12px;opacity:.6">/${tgt}</span>` : ''}</span><small>${label}</small>${isGoal ? `<span class="bar" style="width:${pct}%"></span>` : ''}</div>`;
   };
   const res = `
-    <div class="res steps ${s.res.steps <= 3 ? 'low' : ''} ${ui.bumped.includes('steps') ? 'bump' : ''}"><span class="v"><span class="ic">👣</span>${s.res.steps}</span><small>Steps</small></div>
-    ${resBox('gems', '💎', 'Gems')}${resBox('keys', '🗝️', 'Keys')}${resBox('coins', '🪙', 'Coins')}
-    <div class="res ${ui.bumped.includes('rerolls') ? 'bump' : ''}"><span class="v"><span class="ic">🎲</span>${s.res.rerolls}</span><small>Rerolls</small></div>`;
+    <div class="res steps ${s.res.steps <= 3 ? 'low' : ''} ${ui.bumped.includes('steps') ? 'bump' : ''}"><span class="v"><span class="ic">${icon('steps')}</span>${s.res.steps}</span><small>Steps</small></div>
+    ${resBox('gems', icon('gems'), 'Gems')}${resBox('keys', icon('keys'), 'Keys')}${resBox('coins', icon('coins'), 'Coins')}
+    <div class="res rerolls ${ui.bumped.includes('rerolls') ? 'bump' : ''}"><span class="v"><span class="ic">${icon('rerolls')}</span>${s.res.rerolls}</span><small>Rerolls</small></div>`;
   const fx = activeEffects(s);
   const heir = s.heirlooms.map((h) => `<span class="heir-dot" data-a="effects" title="${esc(HEIRLOOMS[h].name)}">${HEIRLOOMS[h].icon}</span>`).join('');
   return `<div class="run">
     <div class="run-head">
       <button class="icon-btn" data-a="menu" aria-label="Menu">☰</button>
-      <div class="name"><b>${esc(m.name)} · Night ${s.night}/${NIGHTS}</b><span data-a="effects">${OMENS[s.omen].icon} ${esc(OMENS[s.omen].name)}${s.deed ? ` · Deed ${s.deed}` : ''}</span></div>
+      <div class="name"><b>${esc(m.name)} · Night ${s.night}/${NIGHTS}</b><span data-a="effects"><span class="emo">${OMENS[s.omen].icon}</span> ${esc(OMENS[s.omen].name)}${s.deed ? ` · Deed ${s.deed}` : ''}</span></div>
       <button class="icon-btn" data-a="help" aria-label="How to play">?</button>
     </div>
     <div class="hud">${res}</div>
     ${dreadBar(s)}
     <div class="strip">
-      <span class="chip" data-a="effects">✨ Effects · ${fx.count}</span>
-      <span class="chip" data-a="deck">🂠 Deck ${s.deck.length} · Discard ${s.discard.length}</span>
+      <span class="chip" data-a="effects">Effects · ${fx.count}</span>
+      <span class="chip" data-a="deck">${icon('deck')} ${s.deck.length} · discard ${s.discard.length}</span>
       ${heir}
     </div>
-    <div class="board-wrap"><div class="board ${ui.flash ? `flash-${ui.flash}` : ''}" style="--cols:${s.w}">${renderBoard(s)}</div></div>
+    <div class="board-wrap"><div class="sheet"><div class="board ${ui.flash ? `flash-${ui.flash}` : ''}" style="--cols:${s.w}">${renderBoard(s)}</div>
+      <div class="titleblock"><span>Floor ${s.night} of ${NIGHTS} · ${esc(m.name)}</span><span>scale 1:50</span></div></div></div>
     <div class="tray">${renderTray(s)}</div>
   </div>`;
 }
@@ -334,7 +342,7 @@ function dreadBar(s) {
   const pct = Math.max(0, Math.min(100, (100 * (s.dread - lo)) / span));
   const left = Math.max(0, s.dreadNext - s.dread);
   return `<div class="dread ${left <= 2 ? 'near' : ''}" data-a="dreadinfo" role="button" aria-label="Dread">
-    <span class="dl">😨 Dread</span><span class="dt"><span class="df" style="width:${pct}%"></span></span>
+    <span class="dl">${icon('dread')} Dread</span><span class="dt"><span class="df" style="width:${pct}%"></span></span>
     <span class="dn">${left ? `house acts in ${left}` : 'the house stirs…'}</span></div>`;
 }
 
@@ -345,7 +353,7 @@ function renderBoard(s) {
   const p = s.pending;
   const ready = goalMet(s);
   const tgt = goalTarget(s);
-  const gIcon = s.goal.kind === 'wing' ? '🏛️' : RES_ICON2[s.goal.res];
+  const gIcon = s.goal.kind === 'wing' ? 'W' : ({ gems: '◆', coins: '¢', keys: 'K' })[s.goal.res];
   let html = '';
   for (let r = 0; r < s.h; r++) {
     for (let c = 0; c < s.w; c++) {
@@ -356,7 +364,7 @@ function renderBoard(s) {
         const locks = [0, 1, 2, 3].map((d) => s.locks[`${r},${c},${d}`]);
         const isGoal = cell.id === 'vault' || cell.id === 'stair';
         const extra = isGoal
-          ? `<text x="50" y="80" text-anchor="middle" font-size="15" font-weight="800" font-family="Unbounded, system-ui" fill="${ready ? '#48e08f' : '#ffcf5a'}">${tgt}${gIcon}</text>` : '';
+          ? `<g transform="translate(50 79)"><rect x="-17" y="-11" width="34" height="18" fill="${ready ? '#7cc47a' : '#fbf8ef'}" stroke="#1b1a1f" stroke-width="2.5"/><text y="4" text-anchor="middle" font-size="13" font-family="'Archivo Black', sans-serif" fill="#1b1a1f">${tgt}${gIcon}</text></g>` : '';
         const shifted = s.lastShift === r * s.w + c && ui.flash === 'dread' ? 'shifted' : '';
         html += `<div class="cell room ${isGoal ? `vault ${ready ? 'ready' : ''}` : conn.has(k) ? '' : 'disconnected'} ${ui.fresh === k ? 'fresh' : ''} ${shifted}" data-a="info" data-id="${cell.id}">${roomSvg(cell.id, cell.doors, { locks, label: !isGoal && cellSize >= 58, extra })}</div>`;
         continue;
@@ -373,7 +381,7 @@ function renderBoard(s) {
       html += s.mystery[k] ? '<div class="cell myst" aria-label="Mystery"></div>' : '<div class="cell"></div>';
     }
   }
-  html += ui.popups.map((pp) => `<div class="pop ${pp.neg ? 'neg' : ''}" style="left:calc(6px + ${pp.c + 0.5} * var(--cell));top:calc(6px + ${pp.r + 0.5} * var(--cell) - ${pp.i * 18}px);animation-delay:${pp.i * 0.12}s">${pp.text}</div>`).join('');
+  html += ui.popups.map((pp) => `<div class="pop ${pp.neg ? 'neg' : ''}" style="left:calc(${pp.c + 0.5} * var(--cell));top:calc(${pp.r + 0.5} * var(--cell) - ${pp.i * 22}px);animation-delay:${pp.i * 0.12}s">${pp.text}</div>`).join('');
   return html;
 }
 
@@ -388,8 +396,8 @@ function cardHtml(s, id, i, { static: isStatic = false } = {}) {
   const attrs = !s || cant ? '' : `data-a="pick" data-i="${i}" role="button" tabindex="0"`;
   return `<div class="card r-${r.rarity} ${cant ? 'cant' : ''} ${isStatic ? 'static' : ''}" style="--fam:${fam.color};--deep:${fam.deep}" ${attrs}>
     <div class="card-in">
-      ${r.cost ? `<span class="cost ${free ? 'free' : ''}">${r.cost}💎</span>` : ''}
-      <div class="art">${r.rarity === 'rare' || r.rarity === 'legendary' ? `<span class="rtag">${RARITIES[r.rarity].name}</span>` : ''}<span class="emo">${r.icon}</span>${shapeSvg(roomDoors(id, mrot), fam.color)}</div>
+      ${r.cost ? `<span class="cost ${free ? 'free' : ''}">${r.cost}${icon('gems')}</span>` : ''}
+      <div class="art">${r.rarity === 'rare' || r.rarity === 'legendary' ? `<span class="rtag">${RARITIES[r.rarity].name}</span>` : ''}<div class="tile">${roomSvg(id, roomDoors(id, mrot), { label: false })}</div>${shapeSvg(roomDoors(id, mrot))}</div>
       <div class="body">
         <div class="nm">${esc(r.name)}</div>
         <div class="meta">${esc(fam.name)}</div>
@@ -405,28 +413,28 @@ function renderTray(s) {
     case 'door': {
       const tgt = goalTarget(s);
       const prog = goalProgress(s);
-      const where = s.night === NIGHTS ? '👑' : '🪜';
+      const where = icon(s.night === NIGHTS ? 'vault' : 'stair');
       const reached = vaultConnected(s);
       const gl = s.goal.kind === 'wing'
-        ? `Wing ${prog}/${tgt} <span class="muted">(biggest group of connected same-colour rooms)</span>`
+        ? `${icon('wing')} Wing ${prog}/${tgt} <span class="muted">(connected rooms of one colour)</span>`
         : `${RES_ICON2[s.goal.res]} ${prog}/${tgt} ${RES_NAMES[s.goal.res]}`;
-      return `${s.steward ? `<div class="steward"><span>🎩</span><i>${esc(s.steward)}</i></div>` : ''}
+      return `${stewardHtml(s)}
         <div class="goal"><span class="gi">${where}</span><div class="grow">${reached
         ? `<b>${s.night === NIGHTS ? 'The Vault' : 'The Stairwell'} is reached but sealed.</b> ${gl}`
-        : `<b>${esc(goalText(s))}</b><div class="gprog">${gl} ${goalMet(s) ? '<span style="color:var(--ok)">✓ ready</span>' : ''}</div>`}</div></div>
-        <div class="hint">Tap a glowing doorway to draft (1 👣).${drawCount(s) !== 3 ? ` Next draft shows <b>${drawCount(s)}</b> cards.` : ''} <b>?</b> doors hide events.</div>`;
+        : `<b>${esc(goalText(s))}</b><div class="gprog">${gl} ${goalMet(s) ? '<b style="color:#2f6b3a">✓ ready</b>' : ''}</div>`}</div></div>
+        <div class="hint">Tap a red-pencil doorway to draft a room (costs 1 Step).${drawCount(s) !== 3 ? ` Next draft shows <b>${drawCount(s)}</b> cards.` : ''} <b>?</b> doors hide events.</div>`;
     }
     case 'card': {
       const anyOk = p.offers.some((id) => gemCost(s, id) <= s.res.gems);
       return `<div class="tray-head"><h3>Choose a room</h3>
-        <button class="btn small" data-a="reroll" ${s.res.rerolls > 0 ? '' : 'disabled'}>🎲 Reroll · ${s.res.rerolls}</button></div>
+        <button class="btn small" data-a="reroll" ${s.res.rerolls > 0 ? '' : 'disabled'}>${icon('rerolls')} Reroll · ${s.res.rerolls}</button></div>
         <div class="cards">${p.offers.map((id, i) => cardHtml(s, id, i)).join('') || '<div class="hint">Your deck is empty.</div>'}</div>
         ${anyOk ? '' : '<button class="btn" data-a="closet">Nothing affordable · take a Broom Closet</button>'}`;
     }
     case 'place': {
       const r = ROOMS[p.id];
       const one = p.rots.length <= 1;
-      return `<div class="tray-head"><span style="font-size:24px">${r.icon}</span><div class="grow"><h3>${esc(r.name)}</h3><div class="muted" style="font-size:12.5px">${esc(r.text)}</div></div></div>
+      return `<div class="tray-head"><span style="width:40px;height:40px;position:relative;flex:none">${roomSvg(p.id, roomDoors(p.id, p.rot), { label: false })}</span><div class="grow"><h3>${esc(r.name)}</h3><div class="muted" style="font-size:12.5px">${esc(r.text)}</div></div></div>
         <div class="place-bar">
           <button class="btn" data-a="unpick">Back</button>
           <button class="btn" data-a="rot" data-d="-1" ${one ? 'disabled' : ''} aria-label="Rotate left">⟲</button>
@@ -438,9 +446,9 @@ function renderTray(s) {
     case 'shop': {
       const items = s.shop.items.map((it, i) => `<div class="shop-item ${it.sold ? 'sold' : ''}">
         <span class="lbl">${esc(it.label)}</span>
-        ${it.sold ? '<span class="chip">Sold</span>' : `<button class="btn small gold" data-a="buyItem" data-i="${i}" ${s.res.coins < it.price ? 'disabled' : ''}>${it.price} 🪙</button>`}
+        ${it.sold ? '<span class="chip">Sold</span>' : `<button class="btn small gold" data-a="buyItem" data-i="${i}" ${s.res.coins < it.price ? 'disabled' : ''}>${it.price} ${icon('coins')}</button>`}
       </div>`).join('');
-      return `<div class="tray-head"><h3>🛍️ Shop</h3><span class="chip">🪙 ${s.res.coins}</span><button class="btn small primary" data-a="leave">Leave</button></div>
+      return `<div class="tray-head"><h3>Night Market</h3><span class="chip">${icon('coins')} ${s.res.coins}</span><button class="btn small primary" data-a="leave">Leave</button></div>
         <div class="shop-list">${items}</div>`;
     }
     case 'event': {
@@ -452,7 +460,7 @@ function renderTray(s) {
       const opts = s.landing.map((id, i) => { const l = LANDINGS.find((x) => x.id === id); return `<div class="card heir static" data-a="land" data-i="${i}" role="button" tabindex="0"><div class="card-in">
         <div class="art"><span class="emo">${l.icon}</span></div><div class="body"><div class="nm">${esc(l.name)}</div><div class="tx">${esc(l.text)}</div></div></div></div>`; }).join('');
       return `<div class="tray-head"><h3>🌙 Night ${s.night} cleared. Choose a Landing</h3></div>
-        ${s.steward ? `<div class="steward"><span>🎩</span><i>${esc(s.steward)}</i></div>` : ''}
+        ${stewardHtml(s)}
         <div class="cards">${opts}</div>
         <div class="hint" style="font-size:12px">You carry ${Math.floor(s.res.steps / 2)} spare Steps, your deck, Heirlooms and resources up to Night ${s.night + 1}.</div>`;
     }
@@ -489,7 +497,7 @@ function activeEffects(s) {
   const passives = s.cells.filter((x) => x && x.id && ROOMS[x.id].passive).map((x) => ({ icon: ROOMS[x.id].icon, name: ROOMS[x.id].name, text: ROOMS[x.id].text }));
   const rules = [
     { icon: OMENS[s.omen].icon, name: `Omen: ${OMENS[s.omen].name}`, text: OMENS[s.omen].text },
-    { icon: '😨', name: `Dread ${s.dread}`, text: `The house acts at ${s.dreadNext}. Every draft adds 1 (2 if you have 6+ open doorways).` },
+    { icon: '👁️', name: `Dread ${s.dread}`, text: `The house acts at ${s.dreadNext}. Every draft adds 1 (2 if you have 6+ open doorways).` },
     ...Object.entries(s.wings).map(([f, n]) => ({ icon: '🏛️', name: `${FAMILIES[f].name} Wing of ${n}`, text: `Bonus: ${WINGS[f].text}. Grow it for another bonus.` })),
     ...DEEDS.slice(1, s.deed + 1).map((d) => ({ icon: '📜', name: `Deed ${d.level}`, text: d.text })),
   ];
@@ -561,7 +569,7 @@ function renderOverlay() {
       .map(([id, n]) => {
         const r = ROOMS[id];
         const dot = { common: 'transparent', uncommon: '#c9d6f0', rare: '#ffcf5a', legendary: '#ff7ad9' }[r.rarity];
-        return `<div class="deck-row" data-a="info" data-id="${id}"><span class="n">${n}×</span><span style="font-size:18px">${r.icon}</span><span class="grow" style="color:${FAMILIES[r.family].color};font-weight:700">${esc(r.name)}</span><span class="rar" style="background:${dot}"></span></div>`;
+        return `<div class="deck-row" data-a="info" data-id="${id}"><span class="n">${n}×</span><span class="mini">${roomSvg(id, roomDoors(id, 0), { label: false })}</span><span class="grow" style="font-weight:700">${esc(r.name)}</span><span class="rar" style="background:${dot}"></span></div>`;
       }).join('');
     return sheet(`<h2>Draw pile · ${s.deck.length}</h2>
       <div class="muted" style="font-size:13px">${s.discard.length} in the discard pile. When the draw pile runs out it reshuffles, which costs Steps.</div>
@@ -572,14 +580,14 @@ function renderOverlay() {
     const s = ui.run;
     const r = s.result;
     return `<div class="overlay mid"><div class="modal center-modal">
-      <div class="big-result">${r.won ? '👑' : '🕯️'}</div>
+      <div class="big-result">${r.won ? 'Opened.' : 'Lost.'}</div>
       <h2 class="center">${r.won ? 'Vault opened!' : 'The house wins'}</h2>
       <p class="center muted" style="margin:0">${r.won ? 'You reached the Vault.' : esc(LOSS_TEXT[r.why] || '')}</p>
       <div class="kv">
         <span>Rooms drafted</span><b>${s.placed}</b>
         <span>Nights cleared</span><b>${r.nights}/${NIGHTS}</b>
         ${r.won ? `<span>Score</span><b>${r.score}</b>` : ''}
-        <span>Ink earned</span><b>🖋 ${r.ink}</b>
+        <span>Ink earned</span><b>${icon('ink')} ${r.ink}</b>
       </div>
       ${ui.news.length ? `<ul>${ui.news.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       ${ui.meta.pendingKeep ? `<div class="eyebrow">Keep a Blueprint</div>
@@ -607,7 +615,7 @@ function sizeBoard() {
   const wrap = $app.querySelector('.board-wrap');
   const board = $app.querySelector('.board');
   if (!wrap || !board || !ui.run) return;
-  const w = wrap.clientWidth - 28, h = wrap.clientHeight - 20;
+  const w = wrap.clientWidth - 40, h = wrap.clientHeight - 46;
   const next = Math.max(28, Math.floor(Math.min(w / ui.run.w, h / ui.run.h, 88)));
   board.style.setProperty('--cell', `${next}px`);
   if ((next >= 58) !== (cellSize >= 58)) { cellSize = next; board.innerHTML = renderBoard(ui.run); }
@@ -616,8 +624,17 @@ function sizeBoard() {
 window.addEventListener('resize', () => { if (ui.screen === 'run') sizeBoard(); });
 
 // ---------- input ----------
+const PHASE_FOR = { select: 'door', pick: 'card', closet: 'card', reroll: 'card', unpick: 'place', rot: 'place', place: 'place',
+  buyItem: 'shop', leave: 'shop', heir: 'heirloom', choose: 'event', land: 'landing' };
+let lastRunTap = 0;
 function handle(el, e) {
   const a = el.dataset.a;
+  if (PHASE_FOR[a]) {
+    // Ignore stale taps (double taps, or a screen left over from an update) instead of erroring.
+    const now = performance.now();
+    if (!ui.run || ui.run.phase !== PHASE_FOR[a] || now - lastRunTap < 160) { render(); return; }
+    lastRunTap = now;
+  }
   const s = ui.run;
   switch (a) {
     case 'go': ui.screen = el.dataset.to; ui.overlay = null; break;
@@ -713,4 +730,10 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 // Test hook for automated screenshots.
 window.__floorplan = { ui, render, startRun, doAct, getMods, ownedOf };
 
-render();
+// Keep the live game when the page is updated while open.
+try { window.claude?.hot?.snapshot?.(() => ({ run: ui.run, screen: ui.screen })); } catch { /* not in a viewer */ }
+function start(data = {}) {
+  if (data.run && data.run.v === 2 && data.run.phase !== 'won' && data.run.phase !== 'lost') { ui.run = data.run; ui.screen = data.screen === 'run' ? 'run' : ui.screen; }
+  render();
+}
+if (window.claude?.hot?.ready) window.claude.hot.ready(start); else start(window.claude?.hot?.data ?? {});
