@@ -1,0 +1,11 @@
+<title>Floorplan</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* Artifact host already pads :root by the safe-area insets. Deliberately single dark blueprint look. */
+  :root { color-scheme: dark; --safe-t: 0px; --safe-b: 0px; }
+  html, body { height: 100%; background: #0b1d38; color: #e8f1ff; }
+  #app { height: 100%; }
+</style>
+<main id="app" aria-live="polite"></main>
+<div id="toast" role="status"></div>
+<script type="module" src="js/ui/app.js"></script>
