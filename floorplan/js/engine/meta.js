@@ -6,7 +6,7 @@ import { UPGRADES, BASE_SLOTS, upgradeById } from '../data/progression.js';
 
 export function newMeta() {
   return {
-    v: 1, ink: 0, totalInk: 0, runs: 0, wins: 0, owned: [], seenHelp: false,
+    v: 2, ink: 0, totalInk: 0, runs: 0, wins: 0, owned: [], seenHelp: false,
     upgrades: {}, collection: [], equipped: [], heirloomsFound: [], startHeirloom: null, pendingKeep: null,
     mansions: Object.fromEntries(MANSIONS.map((m) => [m.id, { wins: 0, best: 0, maxDeed: 0, losses: 0 }])),
     last: { mansionId: 'm1', deed: 0, deckId: 'standard' },
@@ -16,13 +16,14 @@ export function newMeta() {
 // Fill in anything added since the save was made.
 export function migrateMeta(meta) {
   const base = newMeta();
-  if (!meta || meta.v !== 1) return base;
+  if (!meta) return base;
+  if (meta.v === 1) {
+    // V2 reset: keep settings and the help flag, credit some Ink for past effort.
+    return { ...base, seenHelp: !!meta.seenHelp, ink: Math.min(60, Math.floor((meta.totalInk || 0) * 0.3)), migratedFromV1: true };
+  }
+  if (meta.v !== 2) return base;
   const mansions = Object.fromEntries(Object.entries(base.mansions).map(([k, v]) => [k, { ...v, ...(meta.mansions || {})[k] }]));
   const m = { ...base, ...meta, mansions, last: { ...base.last, ...meta.last } };
-  // Refund perks that became Upgrades.
-  for (const [id, cost] of [['p_satchel', 15], ['p_die', 25]]) {
-    if (m.owned.includes(id)) { m.owned = m.owned.filter((x) => x !== id); m.ink += cost; }
-  }
   return m;
 }
 

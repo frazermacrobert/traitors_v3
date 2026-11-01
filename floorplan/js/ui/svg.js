@@ -37,7 +37,7 @@ export function roomSvg(id, doors, { locks = [], label = true, extra = '' } = {}
   return `<svg viewBox="0 0 100 100" aria-label="${esc(room.name)}">
 <rect x="7" y="7" width="86" height="86" rx="12" fill="url(#g-${vault ? 'vault' : room.family})"/>
 <rect x="7" y="7" width="86" height="86" rx="12" fill="none" stroke="${color}" stroke-opacity=".18" stroke-width="10"/>
-${walls}${gaps}${dot}<text font-size="${label ? 30 : 44}" text-anchor="middle" dominant-baseline="central" x="50" y="${label ? 42 : 52}">${room.icon}</text>${text}${extra}</svg>`;
+${walls}${gaps}${dot}<text font-size="${label ? 30 : extra ? 34 : 44}" text-anchor="middle" dominant-baseline="central" x="50" y="${label ? 42 : extra ? 40 : 52}">${room.icon}</text>${text}${extra}</svg>`;
 }
 
 // A small diagram of the door layout, for cards.

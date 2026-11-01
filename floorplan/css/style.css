@@ -307,3 +307,32 @@ h3 { font-size: 15px; }
 .pips i.on { background: linear-gradient(90deg, var(--gold), #ffe9a8); box-shadow: 0 0 8px rgba(255, 207, 90, .5); }
 .overlay .cards .card { flex-basis: calc((100% - 16px) / 3); min-width: 0; }
 .overlay .card .tx { font-size: 10.5px; }
+
+/* ---------- V2: Dread, Steward, events, mystery ---------- */
+.dread { display: flex; align-items: center; gap: 8px; margin: 0 12px 6px; padding: 6px 10px; border-radius: 12px; background: rgba(255, 95, 115, .07); border: 1px solid rgba(255, 95, 115, .2); cursor: pointer; }
+.dread .dl { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #ffb4bd; white-space: nowrap; }
+.dread .dt { flex: 1; height: 8px; border-radius: 6px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.dread .df { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #8b5cf6, #ff5f73); transition: width .5s ease; }
+.dread .dn { font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dread.near { animation: throb 1.2s ease-in-out infinite; border-color: rgba(255, 95, 115, .6); }
+.dread.near .df { box-shadow: 0 0 12px #ff5f73; }
+@keyframes throb { 50% { background: rgba(255, 95, 115, .18); } }
+.steward { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: #d9cfff; background: rgba(139, 123, 255, .1); border: 1px solid rgba(139, 123, 255, .25); border-radius: 14px; padding: 8px 12px; }
+.steward span { font-size: 18px; line-height: 1; }
+.gprog { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.res.goalres { border-color: rgba(255, 207, 90, .45); }
+.event { display: flex; gap: 12px; align-items: center; }
+.event .ei { font-size: 38px; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 16px; background: radial-gradient(circle, rgba(139, 123, 255, .35), rgba(139, 123, 255, .05)); flex: none; }
+.cell.myst::before { display: block; content: "?"; inset: 22%; border-radius: 10px; background: rgba(139, 123, 255, .1); color: rgba(178, 160, 255, .7);
+  display: grid; place-items: center; font: 800 calc(var(--cell) * .3) var(--display); border: 1px dashed rgba(178, 160, 255, .4); }
+.cell.target.mystery::after { content: "?"; color: #c8b8ff; border-color: rgba(178, 160, 255, .9); box-shadow: 0 0 18px rgba(139, 123, 255, .5), inset 0 0 12px rgba(139, 123, 255, .25);
+  background: radial-gradient(circle, rgba(139, 123, 255, .25), rgba(139, 123, 255, .04) 70%); }
+.cell.target.mystery.locked::after { content: "🔒"; }
+.board.flash-dread { animation: shake .5s ease; }
+.board.flash-dread::after { content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; animation: redflash .9s ease forwards; }
+@keyframes redflash { 0% { box-shadow: inset 0 0 0 3px rgba(255, 95, 115, .9), inset 0 0 60px rgba(255, 95, 115, .45); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+@keyframes shake { 15% { transform: translateX(-5px); } 30% { transform: translateX(5px); } 45% { transform: translateX(-3px); } 60% { transform: translateX(3px); } 80% { transform: translateX(-1px); } }
+.board.flash-wing::after { content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; animation: wingflash 1.1s ease forwards; }
+@keyframes wingflash { 0% { box-shadow: inset 0 0 0 3px rgba(255, 207, 90, .9), 0 0 40px rgba(255, 207, 90, .5); } 100% { box-shadow: none; } }
+.cell.shifted svg { animation: turn .6s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes turn { from { transform: rotate(-90deg); } }

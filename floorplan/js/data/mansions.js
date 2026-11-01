@@ -1,63 +1,48 @@
-// Mansions (levels), their curses, deeds (cumulative difficulty) and starting decks.
-// Coordinates are {r, c}; row 0 is the top (far end) of the house.
+// Mansions are difficulty tiers. Each run is 3 Nights; every Night's floor is generated from the seed.
+// Row 0 is the far end of the floor.
 
-export const CURSES = {
-  dust: { id: 'dust', name: 'Dust Sheets', text: 'The first reshuffle costs 1 extra Step.',
-    reshufflePenalty: (n, s) => (s.reshuffles === 0 ? n + 1 : n) },
-  overgrown: { id: 'overgrown', name: 'Overgrown', text: 'Gardens cost 1 more Gem.',
-    gemCost: (c, room) => (room.family === 'green' ? c + 1 : c) },
-  rusted: { id: 'rusted', name: 'Rusted Hinges', text: 'Shop prices are 1 higher.', shopPrice: (p) => p + 1 },
-  damp: { id: 'damp', name: 'Rising Damp', text: 'Chambers restore 1 fewer Step.',
-    gainAmount: (n, s, { res, room }) => (res === 'steps' && n > 0 && room && room.family === 'violet' ? n - 1 : n) },
-};
-
-const blocked = (list) => list.map(([r, c]) => ({ r, c }));
-
+// goals: per Night, the kind of goal and its base amount. 'toll' = hold N of a resource when you reach the stairs/Vault.
+// 'wing' = have a Wing of N connected rooms of one family when you reach the stairs.
 export const MANSIONS = [
   {
-    id: 'm1', name: 'Hollow House', blurb: 'An empty plot. Learn the ropes.',
-    w: 5, h: 8, entrance: { r: 7, c: 2, rot: 0 }, vault: { r: 0, c: 2, rot: 2 },
-    blocked: [], presets: [], lockedCells: [], lockChance: (r) => (r <= 3 ? 0.12 : 0), curse: 'dust', toll: 6,
+    id: 'm1', name: 'Hollow House', blurb: 'Three quiet floors. The house is only half awake.',
+    w: 5, h: 7, nightSteps: [13, 12, 12], blocks: [1, 2, 3], mystery: [2, 2, 2], lockedCells: [0, 0, 1],
+    lockChance: [0.04, 0.07, 0.1], dreadEvery: [8, 7, 7], omenTier: [1, 1, 2],
+    goals: [{ kind: 'toll', res: 'gems', n: 3 }, { kind: 'toll', res: 'gems', n: 5 }, { kind: 'toll', res: 'gems', n: 8 }],
   },
   {
-    id: 'm2', name: 'Crooked House', blurb: 'Rubble blocks the direct route.',
-    w: 5, h: 8, entrance: { r: 7, c: 2, rot: 0 }, vault: { r: 0, c: 2, rot: 2 },
-    blocked: blocked([[4, 1], [4, 2], [1, 1]]),
-    presets: [{ r: 2, c: 2, id: 'passage', rot: 1 }, { r: 5, c: 4, id: 'guest', rot: 3 }],
-    lockedCells: [], lockChance: (r) => (r <= 4 ? 0.15 : 0), curse: 'overgrown', toll: 6,
-    start: (s) => { s.res.steps += 2; },
+    id: 'm2', name: 'Crooked House', blurb: 'Rubble, odd angles, and a Steward who wants paying.',
+    w: 5, h: 8, nightSteps: [13, 13, 12], blocks: [2, 3, 4], mystery: [2, 2, 3], lockedCells: [0, 1, 1],
+    lockChance: [0.06, 0.09, 0.11], dreadEvery: [8, 7, 7], omenTier: [1, 2, 2],
+    goals: [{ kind: 'toll', res: 'gems', n: 4 }, { kind: 'toll', res: 'coins', n: 8 }, { kind: 'toll', res: 'gems', n: 8 }],
   },
   {
-    id: 'm3', name: 'Locked Wing', blurb: 'The vault sits in a sealed corner wing.',
-    w: 5, h: 8, entrance: { r: 7, c: 1, rot: 0 }, vault: { r: 0, c: 4, rot: 3 },
-    blocked: blocked([[3, 2], [3, 3], [3, 4], [1, 2]]),
-    presets: [{ r: 5, c: 3, id: 'furnace', rot: 0 }],
-    lockedCells: blocked([[2, 0], [2, 1]]), lockChance: (r) => (r <= 3 ? 0.2 : 0.05), curse: 'rusted', toll: 7,
-    start: (s) => { s.res.keys += 1; s.res.steps += 2; },
+    id: 'm3', name: 'Locked Wing', blurb: 'Keys matter here. So does the shape of what you build.',
+    w: 5, h: 8, nightSteps: [14, 14, 13], blocks: [2, 3, 4], mystery: [2, 3, 3], lockedCells: [1, 1, 2],
+    lockChance: [0.08, 0.1, 0.12], dreadEvery: [8, 7, 7], omenTier: [2, 2, 3],
+    goals: [{ kind: 'wing', n: 3 }, { kind: 'toll', res: 'keys', n: 2 }, { kind: 'toll', res: 'gems', n: 9 }],
   },
   {
-    id: 'm4', name: 'Flooded Manor', blurb: 'Bigger, wetter, and the bedrooms are damp.',
-    w: 6, h: 9, entrance: { r: 8, c: 2, rot: 0 }, vault: { r: 0, c: 3, rot: 2 },
-    blocked: blocked([[6, 0], [6, 1], [5, 4], [3, 2], [3, 3], [2, 5], [1, 0]]),
-    presets: [{ r: 4, c: 3, id: 'crossway', rot: 0 }, { r: 2, c: 1, id: 'boarded', rot: 0 }],
-    lockedCells: blocked([[1, 3]]), lockChance: (r) => (r <= 4 ? 0.2 : 0.05), curse: 'damp', toll: 8,
-    start: (s) => { s.res.steps += 6; s.res.keys += 1; },
+    id: 'm4', name: 'Flooded Manor', blurb: 'Wide, wet and wide awake.',
+    w: 6, h: 9, nightSteps: [15, 15, 14], blocks: [4, 5, 7], mystery: [3, 3, 3], lockedCells: [1, 1, 2],
+    lockChance: [0.08, 0.1, 0.12], dreadEvery: [8, 7, 6], omenTier: [2, 3, 3],
+    goals: [{ kind: 'wing', n: 3 }, { kind: 'toll', res: 'coins', n: 10 }, { kind: 'toll', res: 'gems', n: 10 }],
   },
 ];
 
 // Deeds: cumulative handicaps. Deed N applies levels 1..N.
 export const DEEDS = [
   null,
-  { level: 1, text: 'Start with 2 fewer Steps.', start: (s) => { s.res.steps -= 2; } },
-  { level: 2, text: 'Reshuffles cost 1 more Step.', reshufflePenalty: (n) => n + 1 },
+  { level: 1, text: 'The house acts 1 Dread sooner.', dreadEvery: (n) => n - 1 },
+  { level: 2, text: '1 fewer Step every Night.', nightSteps: (n) => n - 1 },
   { level: 3, text: 'A Rubble Heap joins your deck.', start: (s) => { s.deck.push('rubble'); } },
   { level: 4, text: 'Shop prices are 1 higher.', shopPrice: (p) => p + 1 },
-  { level: 5, text: 'Start with 1 fewer Key.', start: (s) => { s.res.keys = Math.max(0, s.res.keys - 1); } },
-  { level: 6, text: 'Start with 2 fewer Steps.', start: (s) => { s.res.steps -= 2; } },
-  { level: 7, text: 'Rare rooms cost 1 more Gem.', gemCost: (c, room) => (room.rarity === 'rare' ? c + 1 : c) },
-  { level: 8, text: 'The Vault toll is 2 Gems higher.', toll: (t) => t + 2 },
-  { level: 9, text: 'Another Rubble Heap joins your deck.', start: (s) => { s.deck.push('rubble'); } },
-  { level: 10, text: 'Doorways lock more often.', lockBonus: 0.1 },
+  { level: 5, text: 'Omens are one tier nastier.', omenTier: (n) => n + 1 },
+  { level: 6, text: 'Goals ask for 1 more.', goalAmount: (n) => n + 1 },
+  { level: 7, text: 'Rare rooms cost 1 more Gem.', gemCost: (c, room) => (room.rarity === 'rare' || room.rarity === 'legendary' ? c + 1 : c) },
+  { level: 8, text: '1 fewer Step every Night.', nightSteps: (n) => n - 1 },
+  { level: 9, text: 'The house acts 1 Dread sooner.', dreadEvery: (n) => n - 1 },
+  { level: 10, text: 'Doorways lock far more often.', lockBonus: (n) => n + 0.1 },
 ];
 export const MAX_DEED = DEEDS.length - 1;
 
@@ -69,8 +54,8 @@ export const DECKS = {
     cards: rep({
       foyer: 2, parlour: 1, study: 1, library: 1,
       herb: 2, fern: 1, greenhouse: 1, terrace: 1,
-      guest: 2, nursery: 1, napnook: 1,
-      passage: 2, bend: 2, junction: 2, crossway: 1,
+      guest: 2, nursery: 1, napnook: 1, hearth: 1,
+      passage: 2, bend: 2, junction: 2, crossway: 1, lamplit: 1,
       tuckshop: 1, strongroom: 1, counting: 1,
       furnace: 1, winecellar: 1, trophy: 1,
     }),
@@ -87,8 +72,8 @@ export const DECKS = {
     }),
   },
   architect: {
-    id: 'architect', name: "Architect's Plans", text: 'Every draft shows 4 cards, but start with 3 fewer Steps.', bias: { amber: 1.5, ivory: 1.5 },
-    drawCount: (n) => n + 1, start: (s) => { s.res.steps -= 3; },
+    id: 'architect', name: "Architect's Plans", text: 'Every draft shows 4 cards, but 2 fewer Steps every Night.', bias: { amber: 1.5, ivory: 1.5 },
+    drawCount: (n) => n + 1, nightSteps: (n) => n - 2,
     cards: rep({
       foyer: 2, gallery: 1, study: 1, atlas: 1, drawingroom: 1,
       herb: 1, fern: 1, courtyard: 1, orchard: 1,
@@ -134,7 +119,5 @@ export const UNLOCKS = [
 ];
 
 export const PERKS = {
-  satchel: { start: (s) => { s.res.gems += 1; } },
-  die: { start: (s) => { s.res.rerolls += 1; } },
   heirloom: { start: () => {} }, // handled by runOptions.startHeirloom
 };

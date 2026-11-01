@@ -1,7 +1,11 @@
 // UI layer: rendering + input only. All rules live in ../engine.
 import {
-  newRun, act, openTargets, cellAt, gemCost, connectedSet, vaultToll, vaultConnected, roomDoors, drawCount, getMods, LOSS_TEXT,
+  newRun, act, openTargets, cellAt, gemCost, connectedSet, vaultConnected, roomDoors, drawCount, getMods, LOSS_TEXT,
+  goalTarget, goalProgress, goalMet, goalText, generateFloor, NIGHTS, biggestWing, RES_NAMES,
 } from '../engine/engine.js';
+import { hashSeed } from '../engine/rng.js';
+import { OMENS, EVENTS, LANDINGS, WINGS } from '../data/nights.js';
+import { sfx, setSound, soundOn } from './sound.js';
 import {
   migrateMeta, applyResult, buyUnlock, mansionUnlocked, availableDecks, runOptions, ownedOf,
   keepBlueprint, skipKeep, toggleEquip, setStartHeirloom, buyUpgrade, upgradeCost, upgradeLevel, blueprintSlots, hasFamilyChest,
@@ -9,7 +13,7 @@ import {
 import { UPGRADES } from '../data/progression.js';
 import { ROOMS, FAMILIES, SHAPES, RARITIES } from '../data/rooms.js';
 import { HEIRLOOMS, MAX_HEIRLOOMS } from '../data/heirlooms.js';
-import { MANSIONS, CURSES, DEEDS, DECKS, UNLOCKS } from '../data/mansions.js';
+import { MANSIONS, DEEDS, DECKS, UNLOCKS } from '../data/mansions.js';
 import { roomSvg, shapeSvg, gradientDefs, esc } from './svg.js';
 
 const $app = document.getElementById('app');
@@ -32,8 +36,11 @@ const ui = {
   bumped: [],
   popups: [],
   tab: 'upgrades',
+  confirmReset: false,
+  flash: null,
 };
-if (ui.run && (ui.run.v !== 1 || !ui.run.pool || ui.run.phase === 'won' || ui.run.phase === 'lost')) ui.run = null;
+if (ui.run && (ui.run.v !== 2 || ui.run.phase === 'won' || ui.run.phase === 'lost')) ui.run = null;
+setSound(!!store.get('floorplan.sound'));
 
 function save() {
   store.set('floorplan.meta', ui.meta);
@@ -59,10 +66,19 @@ function doAct(action) {
     ui.run = act(before, action);
   } catch (e) {
     toast(e.message, true);
+    sfx('error');
     buzz([20, 40, 20]);
     return;
   }
   const s = ui.run;
+  ui.flash = null;
+  if ((s.lastAct?.n || 0) > (before.lastAct?.n || 0)) { ui.flash = 'dread'; sfx('dread'); buzz([40, 30, 60]); }
+  else if ((s.lastWing?.n || 0) > (before.lastWing?.n || 0)) { ui.flash = 'wing'; sfx('wing'); }
+  else if (s.phase === 'event' && before.phase !== 'event') sfx('mystery');
+  else if (s.night > before.night || s.phase === 'landing') sfx('clear');
+  else if (action.type === 'place') sfx('place');
+  else if (action.type === 'select') sfx('deal');
+  else sfx('tap');
   ui.bumped = Object.keys(s.res).filter((k) => s.res[k] !== before.res[k]);
   ui.popups = [];
   ui.fresh = null;
@@ -89,6 +105,7 @@ function endRun() {
   ui.news = news;
   ui.overlay = 'result';
   $toast.className = '';
+  sfx(ui.run.result.won ? 'win' : 'lose');
   buzz(ui.run.result.won ? [30, 50, 30, 50, 80] : 60);
 }
 
@@ -118,14 +135,15 @@ function renderTitle() {
   return `<section class="screen"><div class="title-wrap">
     <div class="title-tiles" aria-hidden="true">${tiles}</div>
     <div class="logo">Floorplan</div>
-    <p class="tag">Draft rooms. Turn them to fit. Reach the Vault before your Steps run out.</p>
+    <p class="tag">Grandfather's house rebuilds itself every night. Draft its rooms, survive three floors, and open the Vault.</p>
     <div class="title-buttons">
-      ${ui.run ? '<button class="btn primary" data-a="resume">Continue run</button>' : ''}
-      <button class="btn ${ui.run ? '' : 'primary'}" data-a="go" data-to="select">${ui.run ? 'New run' : 'Play'}</button>
+      ${ui.run ? `<button class="btn primary" data-a="resume">Continue · Night ${ui.run.night} of ${NIGHTS}</button>` : ''}
+      <button class="btn ${ui.run ? '' : 'primary'}" data-a="go" data-to="select">${ui.run ? 'New run' : m.runs ? 'Continue game' : 'New game'}</button>
       <button class="btn ${canAffordSomething(m) ? 'gold' : ''}" data-a="go" data-to="archive">Archive · 🖋 ${m.ink} Ink${canAffordSomething(m) ? ' · upgrade ready' : ''}</button>
-      <button class="btn ghost" data-a="help">How to play</button>
+      <div class="row"><button class="btn ghost grow" data-a="help">How to play</button><button class="btn ghost grow" data-a="settings">Settings</button></div>
     </div>
     <div class="stats">${m.runs} runs · ${m.wins} wins</div>
+    ${m.migratedFromV1 ? '<div class="chip good">Welcome to V2. Your old progress was reset; you start with some Ink as thanks.</div>' : ''}
   </div></section>`;
 }
 
@@ -135,27 +153,30 @@ function canAffordSomething(meta) {
 }
 
 function minimap(m) {
-  const cells = [];
+  const fl = generateFloor(m, 1, hashSeed(`preview-${m.id}`));
   const key = (r, c) => `${r},${c}`;
-  const blocked = new Set(m.blocked.map((b) => key(b.r, b.c)));
-  const locked = new Set(m.lockedCells.map((b) => key(b.r, b.c)));
-  const pre = new Set(m.presets.map((b) => key(b.r, b.c)));
+  const blocked = new Set(fl.blocks.map((b) => key(b.r, b.c)));
+  const locked = new Set(fl.locked.map((b) => key(b.r, b.c)));
+  const myst = new Set(fl.mystery.map((b) => key(b.r, b.c)));
+  const cells = [];
   for (let r = 0; r < m.h; r++) {
     for (let c = 0; c < m.w; c++) {
       const k = key(r, c);
-      const cls = k === key(m.entrance.r, m.entrance.c) ? 'e' : k === key(m.vault.r, m.vault.c) ? 'v' : blocked.has(k) ? 'b' : pre.has(k) ? 'p' : locked.has(k) ? 'l' : '';
+      const cls = k === key(fl.entrance.r, fl.entrance.c) ? 'e' : k === key(fl.goal.r, fl.goal.c) ? 'v' : blocked.has(k) ? 'b' : myst.has(k) ? 'p' : locked.has(k) ? 'l' : '';
       cells.push(`<i class="${cls}"></i>`);
     }
   }
   return `<div class="minimap" style="grid-template-columns:repeat(${m.w},9px)">${cells.join('')}</div>`;
 }
 
+const RES_ICON2 = { gems: '💎', coins: '🪙', keys: '🗝️' };
+const goalChip = (g) => (g.kind === 'wing' ? `🏛️${g.n}` : `${RES_ICON2[g.res]}${g.n}`);
+
 function renderSelect() {
   const sel = ui.meta.last;
   const mansions = MANSIONS.map((m, i) => {
     const open = mansionUnlocked(ui.meta, i);
     const st = ui.meta.mansions[m.id];
-    const curse = CURSES[m.curse];
     return `<button class="glass panel mansion ${open ? '' : 'locked'} ${sel.mansionId === m.id ? 'selected' : ''}" ${open ? `data-a="pickMansion" data-id="${m.id}"` : 'disabled'}>
       ${minimap(m)}
       <div class="grow" style="display:flex;flex-direction:column;gap:6px">
@@ -163,11 +184,10 @@ function renderSelect() {
         <h3>${esc(m.name)}</h3>
         <div class="muted" style="font-size:13px">${open ? esc(m.blurb) : `Beat ${esc(MANSIONS[i - 1].name)} to unlock.`}</div>
         ${open ? `<div class="row wrap">
-          <span class="chip">👑 Toll ${m.toll}💎</span>
-          <span class="chip curse">✸ ${esc(curse.name)}</span>
+          <span class="chip">🌙 3 Nights · ${m.goals.map(goalChip).join(' → ')}</span>
+          <span class="chip curse">Omens ${'✸'.repeat(Math.max(...m.omenTier))}</span>
           ${st.wins ? `<span class="chip good">🏆 ${st.wins} · best ${st.best}</span>` : ''}
-        </div>
-        <div class="muted" style="font-size:12px">${esc(curse.text)}</div>` : ''}
+        </div>` : ''}
       </div>
     </button>`;
   }).join('');
@@ -277,31 +297,45 @@ function renderUnlocks() {
 function renderRun() {
   const s = ui.run;
   const m = MANSIONS.find((x) => x.id === s.mansionId);
-  const toll = vaultToll(s);
-  const gemPct = toll ? Math.min(100, (100 * s.res.gems) / toll) : 100;
+  const tgt = goalTarget(s);
+  const gr = s.goal.kind === 'toll' ? s.goal.res : null;
+  const resBox = (k, ic, label) => {
+    const isGoal = gr === k;
+    const pct = isGoal && tgt ? Math.min(100, (100 * s.res[k]) / tgt) : 0;
+    return `<div class="res ${isGoal && s.res[k] >= tgt ? 'met' : ''} ${isGoal ? 'goalres' : ''} ${ui.bumped.includes(k) ? 'bump' : ''}"><span class="v"><span class="ic">${ic}</span>${s.res[k]}${isGoal ? `<span style="font-size:12px;opacity:.6">/${tgt}</span>` : ''}</span><small>${label}</small>${isGoal ? `<span class="bar" style="width:${pct}%"></span>` : ''}</div>`;
+  };
   const res = `
     <div class="res steps ${s.res.steps <= 3 ? 'low' : ''} ${ui.bumped.includes('steps') ? 'bump' : ''}"><span class="v"><span class="ic">👣</span>${s.res.steps}</span><small>Steps</small></div>
-    <div class="res ${s.res.gems >= toll ? 'met' : ''} ${ui.bumped.includes('gems') ? 'bump' : ''}"><span class="v"><span class="ic">💎</span>${s.res.gems}<span style="font-size:12px;opacity:.6">/${toll}</span></span><small>Gems</small><span class="bar" style="width:${gemPct}%"></span></div>
-    <div class="res ${ui.bumped.includes('keys') ? 'bump' : ''}"><span class="v"><span class="ic">🗝️</span>${s.res.keys}</span><small>Keys</small></div>
-    <div class="res ${ui.bumped.includes('coins') ? 'bump' : ''}"><span class="v"><span class="ic">🪙</span>${s.res.coins}</span><small>Coins</small></div>
+    ${resBox('gems', '💎', 'Gems')}${resBox('keys', '🗝️', 'Keys')}${resBox('coins', '🪙', 'Coins')}
     <div class="res ${ui.bumped.includes('rerolls') ? 'bump' : ''}"><span class="v"><span class="ic">🎲</span>${s.res.rerolls}</span><small>Rerolls</small></div>`;
   const fx = activeEffects(s);
   const heir = s.heirlooms.map((h) => `<span class="heir-dot" data-a="effects" title="${esc(HEIRLOOMS[h].name)}">${HEIRLOOMS[h].icon}</span>`).join('');
   return `<div class="run">
     <div class="run-head">
       <button class="icon-btn" data-a="menu" aria-label="Menu">☰</button>
-      <div class="name"><b>${esc(m.name)}</b><span>✸ ${esc(CURSES[m.curse].name)}${s.deed ? ` · Deed ${s.deed}` : ''}</span></div>
+      <div class="name"><b>${esc(m.name)} · Night ${s.night}/${NIGHTS}</b><span data-a="effects">${OMENS[s.omen].icon} ${esc(OMENS[s.omen].name)}${s.deed ? ` · Deed ${s.deed}` : ''}</span></div>
       <button class="icon-btn" data-a="help" aria-label="How to play">?</button>
     </div>
     <div class="hud">${res}</div>
+    ${dreadBar(s)}
     <div class="strip">
       <span class="chip" data-a="effects">✨ Effects · ${fx.count}</span>
       <span class="chip" data-a="deck">🂠 Deck ${s.deck.length} · Discard ${s.discard.length}</span>
       ${heir}
     </div>
-    <div class="board-wrap"><div class="board" style="--cols:${s.w}">${renderBoard(s)}</div></div>
+    <div class="board-wrap"><div class="board ${ui.flash ? `flash-${ui.flash}` : ''}" style="--cols:${s.w}">${renderBoard(s)}</div></div>
     <div class="tray">${renderTray(s)}</div>
   </div>`;
+}
+
+function dreadBar(s) {
+  const span = Math.max(1, s.dreadNext - (s.dreadPrev || 0));
+  const lo = s.dreadNext - span;
+  const pct = Math.max(0, Math.min(100, (100 * (s.dread - lo)) / span));
+  const left = Math.max(0, s.dreadNext - s.dread);
+  return `<div class="dread ${left <= 2 ? 'near' : ''}" data-a="dreadinfo" role="button" aria-label="Dread">
+    <span class="dl">😨 Dread</span><span class="dt"><span class="df" style="width:${pct}%"></span></span>
+    <span class="dn">${left ? `house acts in ${left}` : 'the house stirs…'}</span></div>`;
 }
 
 function renderBoard(s) {
@@ -309,7 +343,9 @@ function renderBoard(s) {
   const targets = s.phase === 'door' ? openTargets(s) : [];
   const tmap = new Map(targets.map((t) => [`${t.r},${t.c}`, t]));
   const p = s.pending;
-  const toll = vaultToll(s);
+  const ready = goalMet(s);
+  const tgt = goalTarget(s);
+  const gIcon = s.goal.kind === 'wing' ? '🏛️' : RES_ICON2[s.goal.res];
   let html = '';
   for (let r = 0; r < s.h; r++) {
     for (let c = 0; c < s.w; c++) {
@@ -318,9 +354,11 @@ function renderBoard(s) {
       if (cell && cell.blocked) { html += `<div class="cell blocked ${cell.collapsed ? 'collapsed' : ''}"></div>`; continue; }
       if (cell && cell.id) {
         const locks = [0, 1, 2, 3].map((d) => s.locks[`${r},${c},${d}`]);
-        const extra = cell.id === 'vault'
-          ? `<text x="50" y="80" text-anchor="middle" font-size="15" font-weight="800" font-family="Unbounded, system-ui" fill="${s.res.gems >= toll ? '#48e08f' : '#ffcf5a'}">${toll}💎</text>` : '';
-        html += `<div class="cell room ${cell.id === 'vault' ? `vault ${s.res.gems >= toll ? 'ready' : ''}` : conn.has(k) ? '' : 'disconnected'} ${ui.fresh === k ? 'fresh' : ''}" data-a="info" data-id="${cell.id}">${roomSvg(cell.id, cell.doors, { locks, label: cell.id !== 'vault' && cellSize >= 58, extra })}</div>`;
+        const isGoal = cell.id === 'vault' || cell.id === 'stair';
+        const extra = isGoal
+          ? `<text x="50" y="80" text-anchor="middle" font-size="15" font-weight="800" font-family="Unbounded, system-ui" fill="${ready ? '#48e08f' : '#ffcf5a'}">${tgt}${gIcon}</text>` : '';
+        const shifted = s.lastShift === r * s.w + c && ui.flash === 'dread' ? 'shifted' : '';
+        html += `<div class="cell room ${isGoal ? `vault ${ready ? 'ready' : ''}` : conn.has(k) ? '' : 'disconnected'} ${ui.fresh === k ? 'fresh' : ''} ${shifted}" data-a="info" data-id="${cell.id}">${roomSvg(cell.id, cell.doors, { locks, label: !isGoal && cellSize >= 58, extra })}</div>`;
         continue;
       }
       if (p && p.r === r && p.c === c) {
@@ -329,10 +367,10 @@ function renderBoard(s) {
       }
       const t = tmap.get(k);
       if (t) {
-        html += `<div class="cell target ${t.locked ? 'locked' : ''}" data-a="select" data-r="${r}" data-c="${c}" role="button" aria-label="Draft into row ${r + 1}, column ${c + 1}"></div>`;
+        html += `<div class="cell target ${t.locked ? 'locked' : ''} ${t.mystery ? 'mystery' : ''}" data-a="select" data-r="${r}" data-c="${c}" role="button" aria-label="Draft into row ${r + 1}, column ${c + 1}"></div>`;
         continue;
       }
-      html += '<div class="cell"></div>';
+      html += s.mystery[k] ? '<div class="cell myst" aria-label="Mystery"></div>' : '<div class="cell"></div>';
     }
   }
   html += ui.popups.map((pp) => `<div class="pop ${pp.neg ? 'neg' : ''}" style="left:calc(6px + ${pp.c + 0.5} * var(--cell));top:calc(6px + ${pp.r + 0.5} * var(--cell) - ${pp.i * 18}px);animation-delay:${pp.i * 0.12}s">${pp.text}</div>`).join('');
@@ -365,13 +403,18 @@ function renderTray(s) {
   const p = s.pending;
   switch (s.phase) {
     case 'door': {
-      const toll = vaultToll(s);
-      const sealed = vaultConnected(s) && s.res.gems < toll;
-      const need = Math.max(0, toll - s.res.gems);
-      return `<div class="goal"><span class="gi">👑</span><div class="grow">${sealed
-        ? `<b>The Vault is reached but sealed.</b> Collect ${need} more 💎 to open it.`
-        : `<b>Reach the Vault</b> holding ${toll} 💎 ${need ? `<span class="muted">(${need} to go)</span>` : '<span style="color:var(--ok)">✓ ready</span>'}`}</div></div>
-        <div class="hint">Tap a glowing doorway to draft. <b>Each draft costs 1 👣.</b>${drawCount(s) !== 3 ? ` Next draft shows <b>${drawCount(s)}</b> cards.` : ''}</div>`;
+      const tgt = goalTarget(s);
+      const prog = goalProgress(s);
+      const where = s.night === NIGHTS ? '👑' : '🪜';
+      const reached = vaultConnected(s);
+      const gl = s.goal.kind === 'wing'
+        ? `Wing ${prog}/${tgt} <span class="muted">(biggest group of connected same-colour rooms)</span>`
+        : `${RES_ICON2[s.goal.res]} ${prog}/${tgt} ${RES_NAMES[s.goal.res]}`;
+      return `${s.steward ? `<div class="steward"><span>🎩</span><i>${esc(s.steward)}</i></div>` : ''}
+        <div class="goal"><span class="gi">${where}</span><div class="grow">${reached
+        ? `<b>${s.night === NIGHTS ? 'The Vault' : 'The Stairwell'} is reached but sealed.</b> ${gl}`
+        : `<b>${esc(goalText(s))}</b><div class="gprog">${gl} ${goalMet(s) ? '<span style="color:var(--ok)">✓ ready</span>' : ''}</div>`}</div></div>
+        <div class="hint">Tap a glowing doorway to draft (1 👣).${drawCount(s) !== 3 ? ` Next draft shows <b>${drawCount(s)}</b> cards.` : ''} <b>?</b> doors hide events.</div>`;
     }
     case 'card': {
       const anyOk = p.offers.some((id) => gemCost(s, id) <= s.res.gems);
@@ -399,6 +442,19 @@ function renderTray(s) {
       </div>`).join('');
       return `<div class="tray-head"><h3>🛍️ Shop</h3><span class="chip">🪙 ${s.res.coins}</span><button class="btn small primary" data-a="leave">Leave</button></div>
         <div class="shop-list">${items}</div>`;
+    }
+    case 'event': {
+      const ev = EVENTS.find((e) => e.id === s.event.id);
+      return `<div class="event"><div class="ei">${ev.icon}</div><div class="grow"><h3>${esc(ev.title)}</h3><div class="muted" style="font-size:13px"><i>${esc(ev.text)}</i></div></div></div>
+        <div class="shop-list">${ev.options.map((o, i) => `<button class="btn ${i === 0 ? 'primary' : ''}" data-a="choose" data-i="${i}" ${o.need && !o.need(s) ? 'disabled' : ''}>${esc(o.label)}</button>`).join('')}</div>`;
+    }
+    case 'landing': {
+      const opts = s.landing.map((id, i) => { const l = LANDINGS.find((x) => x.id === id); return `<div class="card heir static" data-a="land" data-i="${i}" role="button" tabindex="0"><div class="card-in">
+        <div class="art"><span class="emo">${l.icon}</span></div><div class="body"><div class="nm">${esc(l.name)}</div><div class="tx">${esc(l.text)}</div></div></div></div>`; }).join('');
+      return `<div class="tray-head"><h3>🌙 Night ${s.night} cleared. Choose a Landing</h3></div>
+        ${s.steward ? `<div class="steward"><span>🎩</span><i>${esc(s.steward)}</i></div>` : ''}
+        <div class="cards">${opts}</div>
+        <div class="hint" style="font-size:12px">You carry ${Math.floor(s.res.steps / 2)} spare Steps, your deck, Heirlooms and resources up to Night ${s.night + 1}.</div>`;
     }
     case 'heirloom': {
       const cards = s.heirloomOffer.map((h, i) => `<div class="card heir" data-a="heir" data-i="${i}" role="button" tabindex="0"><div class="card-in">
@@ -432,7 +488,9 @@ function activeEffects(s) {
   ].filter(Boolean);
   const passives = s.cells.filter((x) => x && x.id && ROOMS[x.id].passive).map((x) => ({ icon: ROOMS[x.id].icon, name: ROOMS[x.id].name, text: ROOMS[x.id].text }));
   const rules = [
-    { icon: '✸', name: `Curse: ${CURSES[m.curse].name}`, text: CURSES[m.curse].text },
+    { icon: OMENS[s.omen].icon, name: `Omen: ${OMENS[s.omen].name}`, text: OMENS[s.omen].text },
+    { icon: '😨', name: `Dread ${s.dread}`, text: `The house acts at ${s.dreadNext}. Every draft adds 1 (2 if you have 6+ open doorways).` },
+    ...Object.entries(s.wings).map(([f, n]) => ({ icon: '🏛️', name: `${FAMILIES[f].name} Wing of ${n}`, text: `Bonus: ${WINGS[f].text}. Grow it for another bonus.` })),
     ...DEEDS.slice(1, s.deed + 1).map((d) => ({ icon: '📜', name: `Deed ${d.level}`, text: d.text })),
   ];
   const perks = UNLOCKS.filter((u) => u.kind === 'perk' && ui.meta.owned.includes(u.id)).map((u) => ({ icon: '✨', name: u.name, text: u.text }));
@@ -449,11 +507,14 @@ function renderOverlay() {
   if (o === 'help') {
     return sheet(`<h2>How to play</h2>
       <ul>
-        <li>Start at the <b>🚪 Entrance</b>. Reach the <b>👑 Vault</b> at the far end.</li>
+        <li>A run is <b>three Nights</b>. Each Night the house builds a new floor. Reach the <b>🪜 Stairwell</b>; on Night 3, the <b>👑 Vault</b>.</li>
+        <li>Each Night has a <b>goal</b> (hold enough Gems, Coins or Keys, or build a Wing) and an <b>Omen</b> that bends the rules.</li>
         <li>Tap a glowing doorway. You're dealt <b>3 rooms</b>. Pick one; the others go to the discard pile.</li>
         <li><b>Rotate</b> it so its doors lead where you want. It must connect back to the doorway.</li>
         <li>Each draft costs <b>1 👣 Step</b>. Chambers (purple) give Steps back. Run out and the run ends.</li>
-        <li>The Vault opens only while you hold its <b>💎 Gem toll</b>. Gardens (green) grow Gems; rare rooms cost Gems.</li>
+        <li><b>😨 Dread</b> rises with every draft, faster if you sprawl. When it fills, the house acts: doors slam, floors collapse, rooms turn. Calming rooms lower it.</li>
+        <li>Connect <b>3+ rooms of one colour</b> to form a <b>Wing</b> for a bonus, and again each time it grows. <b>?</b> doorways hide events.</li>
+        <li>Between Nights, pick a <b>Landing</b>: rest, shop, burn cards, or take an Heirloom.</li>
         <li><b>🔒 Locked</b> doorways need a 🗝️ Key. If every way on is blocked, the run ends.</li>
         <li><b>Heirlooms</b> last for the current run.</li>
         <li><b>You get stronger every run.</b> Each run earns Ink for permanent Upgrades, and you keep one room you drafted as a Blueprint for your starting deck.</li>
@@ -462,9 +523,22 @@ function renderOverlay() {
       ${Object.entries(FAMILIES).filter(([k]) => k !== 'special').map(([, f]) => `<div class="fx-item"><span class="fi" style="color:${f.color}">●</span><div><b style="color:${f.color}">${f.name}</b><span>${f.role}</span></div></div>`).join('')}
       <button class="btn primary" data-a="close">Got it</button>`);
   }
+  if (o === 'settings') {
+    return sheet(`<h2>Settings</h2>
+      <button class="btn" data-a="sound">${soundOn() ? '🔊 Sound on' : '🔇 Sound off'}</button>
+      <div class="glass panel" style="display:flex;flex-direction:column;gap:10px">
+        <h3>Restart game</h3>
+        <div class="muted" style="font-size:13px">Erases everything: Ink, Upgrades, Blueprints, unlocked mansions and any run in progress.</div>
+        ${ui.confirmReset
+          ? '<div class="row"><button class="btn grow" data-a="resetNo">Keep my progress</button><button class="btn danger grow" data-a="resetYes">Erase everything</button></div>'
+          : '<button class="btn danger" data-a="resetAsk">Restart game…</button>'}
+      </div>
+      <button class="btn primary" data-a="close">Done</button>`, true);
+  }
   if (o === 'menu') {
     return sheet(`<h2>Paused</h2>
       <button class="btn primary" data-a="close">Resume</button>
+      <button class="btn" data-a="sound">${soundOn() ? '🔊 Sound on' : '🔇 Sound off'}</button>
       <button class="btn" data-a="home">Save and quit to title</button>
       <button class="btn danger" data-a="abandon">Abandon run</button>`, true);
   }
@@ -503,7 +577,7 @@ function renderOverlay() {
       <p class="center muted" style="margin:0">${r.won ? 'You reached the Vault.' : esc(LOSS_TEXT[r.why] || '')}</p>
       <div class="kv">
         <span>Rooms drafted</span><b>${s.placed}</b>
-        <span>Rows advanced</span><b>${r.rowsAdvanced}</b>
+        <span>Nights cleared</span><b>${r.nights}/${NIGHTS}</b>
         ${r.won ? `<span>Score</span><b>${r.score}</b>` : ''}
         <span>Ink earned</span><b>🖋 ${r.ink}</b>
       </div>
@@ -522,7 +596,7 @@ function renderOverlay() {
 function roomInfo(id) {
   const s = ui.run;
   const r = ROOMS[id];
-  if (id === 'vault') return { html: `<h2>👑 The Vault</h2><p>Connect a door to it while holding ${vaultToll(s)} 💎 to win.</p>` };
+  if (id === 'vault' || id === 'stair') return { html: `<h2>${ROOMS[id].icon} ${ROOMS[id].name}</h2><p>${esc(goalText(s))}</p>` };
   if (id === 'entrance') return { html: '<h2>🚪 Entrance Hall</h2><p>Where every visit begins.</p>' };
   return { html: `<div style="display:flex;justify-content:center">${cardHtml(null, id, -1, { static: true }).replace('class="card ', 'style="width:180px;flex:none" class="card ')}</div>` };
 }
@@ -554,6 +628,18 @@ function handle(el, e) {
       if (ui.overlay === 'help' && !ui.meta.seenHelp) { ui.meta.seenHelp = true; save(); }
       ui.overlay = null; break;
     case 'menu': ui.overlay = 'menu'; break;
+    case 'settings': ui.overlay = 'settings'; ui.confirmReset = false; break;
+    case 'sound': setSound(!soundOn()); store.set('floorplan.sound', soundOn()); sfx('gain'); break;
+    case 'resetAsk': ui.confirmReset = true; break;
+    case 'resetNo': ui.confirmReset = false; break;
+    case 'resetYes':
+      store.del('floorplan.meta'); store.del('floorplan.run');
+      ui.meta = migrateMeta(null); ui.run = null; ui.overlay = null; ui.confirmReset = false; ui.screen = 'title';
+      toast('All progress erased. A fresh start.');
+      break;
+    case 'dreadinfo': toast(`Dread ${ui.run.dread}/${ui.run.dreadNext}: the house acts when it fills.`); return;
+    case 'choose': return doAct({ type: 'choose', index: Number(el.dataset.i) });
+    case 'land': return doAct({ type: 'land', index: Number(el.dataset.i) });
     case 'effects': ui.overlay = 'effects'; break;
     case 'deck': ui.overlay = 'deck'; break;
     case 'home': ui.overlay = null; ui.screen = 'title'; break;

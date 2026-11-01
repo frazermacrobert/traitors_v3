@@ -31,7 +31,7 @@ const overflow = async (n) => {
   if (w > 390) errors.push(`${n}: horizontal overflow ${w}px`);
 };
 await shot('1-title'); await overflow('title');
-await page.click('text=Play');
+await page.click('[data-a=go][data-to=select]');
 await shot('2-select'); await overflow('select');
 await page.click('[data-a=start]');
 await shot('3-help');
@@ -44,7 +44,7 @@ await shot('6-place');
 await page.click('[data-a=place]');
 await shot('7-placed');
 // Let the bot-like loop play to the end through the UI hooks.
-for (let i = 0; i < 200; i++) {
+for (let i = 0; i < 400; i++) {
   const phase = await page.evaluate(() => window.__floorplan.ui.run?.phase);
   if (!phase || phase === 'won' || phase === 'lost') break;
   if (phase === 'door') await page.click((await page.$('.cell.target:not(.locked)')) ? '.cell.target:not(.locked) >> nth=0' : '.cell.target >> nth=0');
@@ -52,6 +52,8 @@ for (let i = 0; i < 200; i++) {
   else if (phase === 'place') await page.click('[data-a=place]');
   else if (phase === 'shop') { await shot('8-shop'); await page.click('[data-a=leave]'); }
   else if (phase === 'heirloom') { await shot('8-heirloom'); await page.click('[data-a=heir] >> nth=0'); }
+  else if (phase === 'event') { await shot('8-event'); await page.click('[data-a=choose]:not([disabled]) >> nth=0'); }
+  else if (phase === 'landing') { await shot('8-landing'); await page.click('[data-a=land] >> nth=0'); }
 }
 await shot('9-result'); await overflow('result');
 if (await page.$('[data-a=keep]')) { await page.click('[data-a=keep] >> nth=0'); await shot('9b-kept'); }
@@ -63,7 +65,7 @@ await page.goto(url);
 await page.click('text=Archive');
 await shot('11-archive'); await overflow('archive');
 await page.click('[data-a=tab][data-id=blueprints]'); await shot('12-blueprints');
-await page.click('[data-a=go][data-to=title]'); await page.click('text=New run').catch(() => page.click('text=Play')); await shot('13-select-loadout');
+await page.click('[data-a=go][data-to=title]'); await page.click('[data-a=settings]'); await page.click('[data-a=resetAsk]'); await shot('13-settings');
 await browser.close();
 server.close();
 if (errors.length) { console.error('ERRORS:\n' + errors.join('\n')); process.exit(1); }

@@ -102,3 +102,39 @@ Flooded Manor     2   38.3       5.9       20.3  63/108/14
 Flooded Manor     5   35.0       4.9       21.1  69/90/36
 Flooded Manor    10   20.7       3.7       19.6  101/111/26
 ```
+
+## V2: three Nights, Dread, Omens (lookahead bot)
+
+The old greedy bot under-played the game, so balance looked harder than it was. `tools/bot.mjs` now simulates every
+card × rotation and scores the resulting state (distance to goal, goal shortfall, Steps, Dread). Columns N1–N3 are
+the share of runs clearing each Night.
+
+Fresh player:
+```
+Hollow House      0   42.0    91    71    42       28.9  8/40/39
+Hollow House      5   36.7    89    65    37       26.8  19/37/39
+Hollow House     10   12.7    81    40    13       23.2  22/31/78
+Crooked House     0   29.3    78    49    29       28.8  17/49/40
+Crooked House     5   20.7    81    44    21       28.1  24/57/38
+Crooked House    10    2.7    61     9     3       19.9  37/32/77
+Locked Wing       0   14.0    63    28    14       27.1  18/54/57
+Locked Wing       5    3.3    47    12     3       22.2  31/56/58
+Locked Wing      10    0.7    23     2     1       17.6  36/27/86
+Flooded Manor     0   18.0    63    31    18       29.8  31/39/53
+Flooded Manor     5    8.7    57    31     9       29.7  39/42/56
+Flooded Manor    10    0.7    20     5     1       19.1  43/20/86
+```
+A few hours in (some upgrades + 3 Blueprints), deed 0:
+```
+Hollow House      0   72.7    97    91    73       27.7  2/17/22
+Crooked House     0   40.0    92    63    40       30.0  7/39/44
+Locked Wing       0   18.7    71    29    19       29.0  13/46/63
+Flooded Manor     0   34.7    78    52    35       35.6  8/46/44
+```
+Fully upgraded, deed 0:
+```
+Hollow House      0   78.7    99    93    79       28.9  0/14/18
+Crooked House     0   62.0    99    82    62       31.9  2/24/31
+Locked Wing       0   40.0    79    61    40       31.3  0/41/49
+Flooded Manor     0   52.7    85    69    53       37.5  4/22/45
+```

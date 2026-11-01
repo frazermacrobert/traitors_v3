@@ -38,7 +38,8 @@ const R = (id, name, family, shape, cost, rarity, icon, text, extra = {}) => ({
 export const ROOMS = {
   // ---- Landmarks (never drafted) ----
   entrance: R('entrance', 'Entrance Hall', 'special', 'T', 0, 'common', '🚪', 'Where every visit begins.'),
-  vault: R('vault', 'The Vault', 'special', 'D', 0, 'legendary', '👑', 'Connect a door to it while holding its Gem toll.'),
+  vault: R('vault', 'The Vault', 'special', 'D', 0, 'legendary', '👑', 'Night 3’s goal. Connect a door to it and meet the goal to win.'),
+  stair: R('stair', 'Stairwell', 'special', 'D', 0, 'rare', '🪜', 'The way up. Connect a door to it and meet the goal to clear the Night.'),
   closet: R('closet', 'Broom Closet', 'blue', 'D', 0, 'common', '🧹', 'Fallback. Does nothing.'),
   rubble: R('rubble', 'Rubble Heap', 'crimson', 'D', 0, 'common', '🧱', 'Lose 1 Step.', { onPlace: (c) => c.gain('steps', -1) }),
 
@@ -63,6 +64,8 @@ export const ROOMS = {
   archive: R('archive', 'Map Archive', 'blue', 'I', 1, 'rare', '🗄️', 'Add 2 random Rare rooms to your discard pile.', {
     onPlace: (c) => c.addRandom(2, (r) => r.rarity === 'rare'),
   }),
+
+  vigil: R('vigil', 'Vigil Room', 'blue', 'D', 0, 'uncommon', '🙏', 'Calms the house: −5 Dread.', { calm: 5 }),
 
   // ---- Green Gardens: gems & adjacency ----
   herb: R('herb', 'Herb Garden', 'green', 'D', 0, 'common', '🌿', '+1 Gem, +1 more per adjacent Garden.', { onPlace: (c) => c.gain('gems', 1 + adj(c, 'green')) }),
@@ -90,6 +93,7 @@ export const ROOMS = {
   // ---- Violet Chambers: steps ----
   guest: R('guest', 'Guest Room', 'violet', 'D', 0, 'common', '🛏️', '+3 Steps.', { onPlace: (c) => c.gain('steps', 3) }),
   nursery: R('nursery', 'Nursery', 'violet', 'L', 0, 'common', '🧸', '+2 Steps.', { onPlace: (c) => c.gain('steps', 2) }),
+  hearth: R('hearth', 'Hearth Room', 'violet', 'L', 0, 'common', '🔥', '+1 Step. Calms the house: −3 Dread.', { calm: 3, onPlace: (c) => c.gain('steps', 1) }),
   dressing: R('dressing', 'Dressing Room', 'violet', 'I', 0, 'common', '👗', '+1 Step, +1 Coin.', { onPlace: (c) => { c.gain('steps', 1); c.gain('coins', 1); } }),
   napnook: R('napnook', 'Nap Nook', 'violet', 'D', 0, 'common', '💤', '+2 Steps, or +4 if you have 3 or fewer.', {
     onPlace: (c) => c.gain('steps', c.s.res.steps <= 3 ? 4 : 2),
@@ -116,13 +120,14 @@ export const ROOMS = {
   bend: R('bend', 'Bend', 'amber', 'L', 0, 'common', '↪️', 'Just a corner.'),
   junction: R('junction', 'Junction', 'amber', 'T', 0, 'common', '🔀', 'Three ways on.'),
   servants: R('servants', "Servants' Hall", 'amber', 'X', 0, 'common', '🧺', 'Four ways on. Lose 1 Coin if you have one.', { onPlace: (c) => c.gain('coins', -1) }),
-  backstairs: R('backstairs', 'Back Stairs', 'amber', 'I', 0, 'common', '🪜', '+1 Step if connected to another Corridor.', {
+  backstairs: R('backstairs', 'Back Stairs', 'amber', 'I', 0, 'common', '🛤️', '+1 Step if connected to another Corridor.', {
     onPlace: (c) => { if (c.neighbors().some((n) => n.connected && n.room.family === 'amber')) c.gain('steps', 1); },
   }),
   cloister: R('cloister', 'Cloister', 'amber', 'L', 0, 'common', '🏛️', '+1 Coin per connected Corridor.', {
     onPlace: (c) => c.gain('coins', c.neighbors().filter((n) => n.connected && n.room.family === 'amber').length),
   }),
   crossway: R('crossway', 'Crossway', 'amber', 'X', 1, 'uncommon', '✳️', 'Four ways on.'),
+  lamplit: R('lamplit', 'Lamplit Hall', 'amber', 'I', 0, 'common', '🏮', 'Calms the house: −2 Dread.', { calm: 2 }),
   colonnade: R('colonnade', 'Colonnade', 'amber', 'I', 0, 'uncommon', '🏺', '+2 Steps if both its doors connect when placed.', {
     onPlace: (c) => { if (conn(c) >= 2) c.gain('steps', 2); },
   }),
@@ -154,10 +159,13 @@ export const ROOMS = {
   mint: R('mint', 'Mint', 'gold', 'I', 1, 'rare', '🪙', '+2 Coins, +2 more per Shop in the house.', {
     onPlace: (c) => c.gain('coins', 2 + 2 * (c.placed((r) => r.family === 'gold').length - 1)),
   }),
-  tollhouse: R('tollhouse', 'Toll House', 'gold', 'D', 1, 'rare', '🏷️', 'The Vault toll drops by 2.', { onPlace: (c) => c.toll(-2) }),
+  tollhouse: R('tollhouse', 'Toll House', 'gold', 'D', 1, 'rare', '🏷️', 'The current goal drops by 2.', { onPlace: (c) => c.toll(-2) }),
 
   // ---- Crimson: big rewards, real costs ----
-  furnace: R('furnace', 'Furnace Room', 'crimson', 'X', 0, 'common', '🔥', 'Four ways on. Lose 2 Steps.', { onPlace: (c) => c.gain('steps', -2) }),
+  furnace: R('furnace', 'Furnace Room', 'crimson', 'X', 0, 'common', '♨️', 'Four ways on. Lose 2 Steps.', { onPlace: (c) => c.gain('steps', -2) }),
+  bellpull: R('bellpull', 'Bell-Pull Room', 'crimson', 'L', 0, 'uncommon', '🛎️', '+4 Coins, +2 Gems. The house wakes: +4 Dread.', {
+    onPlace: (c) => { c.gain('coins', 4); c.gain('gems', 2); c.dread(4); },
+  }),
   winecellar: R('winecellar', 'Wine Cellar', 'crimson', 'L', 0, 'uncommon', '🍷', '+3 Gems. Lose 2 Steps.', { onPlace: (c) => { c.gain('gems', 3); c.gain('steps', -2); } }),
   gambling: R('gambling', 'Card Room', 'crimson', 'T', 0, 'uncommon', '🃏', 'Coin flip: +6 Coins, or lose 2 Steps.', {
     onPlace: (c) => { if (c.rand() < 0.5) c.gain('coins', 6); else c.gain('steps', -2); },
@@ -169,7 +177,7 @@ export const ROOMS = {
   flooded: R('flooded', 'Flooded Cellar', 'crimson', 'D', 0, 'uncommon', '🌊', '+4 Gems. Every empty cell next to it floods.', {
     onPlace: (c) => { c.gain('gems', 4); c.collapse(4); },
   }),
-  debtors: R('debtors', "Debtors' Office", 'crimson', 'I', 0, 'uncommon', '💸', '+6 Coins. The Vault toll rises by 1.', { onPlace: (c) => { c.gain('coins', 6); c.toll(1); } }),
+  debtors: R('debtors', "Debtors' Office", 'crimson', 'I', 0, 'uncommon', '💸', '+6 Coins. The current goal rises by 1.', { onPlace: (c) => { c.gain('coins', 6); c.toll(1); } }),
   haunted: R('haunted', 'Haunted Nursery', 'crimson', 'L', 0, 'uncommon', '👻', '+4 Steps. A Rubble Heap joins your discard pile.', {
     onPlace: (c) => { c.gain('steps', 4); c.addCards(['rubble']); },
   }),
@@ -189,7 +197,7 @@ export const ROOMS = {
   // ---- Ivory Wonders: rare rule-breakers ----
   trophy: R('trophy', 'Trophy Room', 'ivory', 'D', 2, 'rare', '🏆', 'Choose an Heirloom.', { onPlace: (c) => c.queue('heirloom') }),
   secret: R('secret', 'Secret Passage', 'ivory', 'I', 1, 'rare', '🕵️', 'Your next 2 drafts cost no Steps.', { onPlace: (c) => c.buff('freeDraft', 2) }),
-  cartographer: R('cartographer', "Cartographer's Loft", 'ivory', 'L', 2, 'rare', '🧭', 'The Vault toll drops by 1. Your next 3 drafts show +1 card.', {
+  cartographer: R('cartographer', "Cartographer's Loft", 'ivory', 'L', 2, 'rare', '🧭', 'The current goal drops by 1. Your next 3 drafts show +1 card.', {
     onPlace: (c) => { c.toll(-1); c.buff('extraDraw', 3); },
   }),
   ballroom: R('ballroom', 'Ballroom', 'ivory', 'X', 3, 'rare', '💃', '+4 Steps, +3 Coins.', { unlock: true, onPlace: (c) => { c.gain('steps', 4); c.gain('coins', 3); } }),
@@ -216,4 +224,4 @@ export const ROOMS = {
   }),
 };
 
-export const isDraftable = (id) => !['entrance', 'vault', 'closet', 'rubble'].includes(id);
+export const isDraftable = (id) => !['entrance', 'vault', 'stair', 'closet', 'rubble'].includes(id);

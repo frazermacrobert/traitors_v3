@@ -1,5 +1,23 @@
 # Floorplan: design notes
 
+## V2 (current)
+A run is **three Nights**. Each Night generates a fresh floor from the seed (entrance bottom, Stairwell top; Vault on Night 3),
+with blocked cells, locked cells and **?** mystery cells, a **goal** (hold N Gems/Coins/Keys, or have a Wing of N) and an **Omen**.
+- **Dread** rises 1 per draft (+1 when 6+ doorways are open). At thresholds the house acts: seals the doorway nearest the goal,
+  collapses a cell, chills Steps, slips Rubble into the deck, whispers (fewer cards), raises the goal, or rotates a room.
+  Calming rooms (Hearth Room, Vigil Room, Lamplit Hall), events and the Chapel landing push back.
+- **Wings**: 3+ connected rooms of one family give a family bonus, again each time the Wing grows.
+- **Mystery events** (9) offer two-way choices. **Landings** between Nights: rest, shop, burn, heirloom, plan chest, locksmith, chapel.
+- Placed rooms return to the deck between Nights; Steps reset per Night (+ half your leftover).
+- The **Steward** comments on events. Optional synthesized sound (muted by default).
+- Meta upgrades are capped and smaller; mansions are difficulty tiers rather than fixed layouts.
+- Settings: sound toggle and **Restart game** (two-step, erases all progress). V1 saves reset with up to 60 Ink credit.
+
+Not yet done from the V2 plan: custom illustrated icon set, Pact-style modifiers, Daily mansion, Codex, room upgrades, secret rooms.
+
+---
+
+
 An original, mobile-first roguelike room-drafting game. It borrows Blue Prince's "draft 1 of 3 rooms at a doorway" idea,
 Carcassonne's rotate-to-fit placement, and Slay the Spire / Balatro run structure. No names, rooms or story are taken from them.
 
