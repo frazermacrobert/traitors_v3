@@ -29,6 +29,12 @@ Carcassonne's rotate-to-fit placement, and Slay the Spire / Balatro run structur
   copy/add cards to the deck, burn cards, interest, conversions, standing passives (Observatory, Conservatory, Chapel).
 - Heirlooms last for one run. Archive unlocks (rooms, Plans, perks) are permanent. The Effects sheet shows all of this in one place.
 
+## Getting stronger between runs (v3)
+- **Upgrades** (Archive → Upgrades): tiered, permanent, bought with Ink: Stamina, Deep Pockets, Loaded Dice, Foresight, Keyring, Purse, Second Wind, Drafting Table.
+- **Blueprints**: after every run (win or lose) you keep 1 of up to 3 rooms you drafted, rarest first. Equipped Blueprints join the starting deck; slots start at 3 (+3 via Drafting Table).
+- **Heirlooms found** are recorded. The Family Chest perk lets you pick one to start every run with.
+- Ink still comes from every run, so failing repeatedly always moves you forward.
+
 ## Structure
 - `js/engine/`: pure rules (`engine.js`), meta-progression (`meta.js`), seeded RNG.
 - `js/data/`: rooms, heirlooms, mansions/curses/deeds/decks/unlocks. Content is data plus small hook functions.

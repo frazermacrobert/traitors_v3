@@ -54,6 +54,7 @@ for (let i = 0; i < 200; i++) {
   else if (phase === 'heirloom') { await shot('8-heirloom'); await page.click('[data-a=heir] >> nth=0'); }
 }
 await shot('9-result'); await overflow('result');
+if (await page.$('[data-a=keep]')) { await page.click('[data-a=keep] >> nth=0'); await shot('9b-kept'); }
 await page.click('[data-a=resultBoard]').catch(() => {});
 await shot('10-final-board');
 await page.click('[data-a=showResult]').catch(() => {});
@@ -61,6 +62,8 @@ await page.click('[data-a=goSelect]').catch(() => {});
 await page.goto(url);
 await page.click('text=Archive');
 await shot('11-archive'); await overflow('archive');
+await page.click('[data-a=tab][data-id=blueprints]'); await shot('12-blueprints');
+await page.click('[data-a=go][data-to=title]'); await page.click('text=New run').catch(() => page.click('text=Play')); await shot('13-select-loadout');
 await browser.close();
 server.close();
 if (errors.length) { console.error('ERRORS:\n' + errors.join('\n')); process.exit(1); }

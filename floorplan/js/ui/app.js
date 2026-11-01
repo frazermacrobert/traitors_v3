@@ -2,7 +2,11 @@
 import {
   newRun, act, openTargets, cellAt, gemCost, connectedSet, vaultToll, vaultConnected, roomDoors, drawCount, getMods, LOSS_TEXT,
 } from '../engine/engine.js';
-import { migrateMeta, applyResult, buyUnlock, mansionUnlocked, availableDecks, runOptions, ownedOf } from '../engine/meta.js';
+import {
+  migrateMeta, applyResult, buyUnlock, mansionUnlocked, availableDecks, runOptions, ownedOf,
+  keepBlueprint, skipKeep, toggleEquip, setStartHeirloom, buyUpgrade, upgradeCost, upgradeLevel, blueprintSlots, hasFamilyChest,
+} from '../engine/meta.js';
+import { UPGRADES } from '../data/progression.js';
 import { ROOMS, FAMILIES, SHAPES, RARITIES } from '../data/rooms.js';
 import { HEIRLOOMS, MAX_HEIRLOOMS } from '../data/heirlooms.js';
 import { MANSIONS, CURSES, DEEDS, DECKS, UNLOCKS } from '../data/mansions.js';
@@ -27,6 +31,7 @@ const ui = {
   fresh: null,
   bumped: [],
   popups: [],
+  tab: 'upgrades',
 };
 if (ui.run && (ui.run.v !== 1 || !ui.run.pool || ui.run.phase === 'won' || ui.run.phase === 'lost')) ui.run = null;
 
@@ -88,6 +93,7 @@ function endRun() {
 }
 
 function startRun() {
+  if (ui.meta.pendingKeep) ui.meta = skipKeep(ui.meta);
   const seed = `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
   ui.run = newRun(runOptions(ui.meta, { ...ui.meta.last, seed }));
   ui.screen = 'run';
@@ -116,11 +122,16 @@ function renderTitle() {
     <div class="title-buttons">
       ${ui.run ? '<button class="btn primary" data-a="resume">Continue run</button>' : ''}
       <button class="btn ${ui.run ? '' : 'primary'}" data-a="go" data-to="select">${ui.run ? 'New run' : 'Play'}</button>
-      <button class="btn" data-a="go" data-to="archive">Archive · 🖋 ${m.ink} Ink</button>
+      <button class="btn ${canAffordSomething(m) ? 'gold' : ''}" data-a="go" data-to="archive">Archive · 🖋 ${m.ink} Ink${canAffordSomething(m) ? ' · upgrade ready' : ''}</button>
       <button class="btn ghost" data-a="help">How to play</button>
     </div>
     <div class="stats">${m.runs} runs · ${m.wins} wins</div>
   </div></section>`;
+}
+
+function canAffordSomething(meta) {
+  return UPGRADES.some((u) => { const c = upgradeCost(meta, u.id); return c !== null && c <= meta.ink; })
+    || UNLOCKS.some((u) => !meta.owned.includes(u.id) && u.cost <= meta.ink);
 }
 
 function minimap(m) {
@@ -178,11 +189,73 @@ function renderSelect() {
     </div>
     <div class="glass panel"><h3 style="margin-bottom:10px">Plans</h3><div class="seg">${decks}</div>
       <div class="muted" style="font-size:13px;margin-top:10px">${esc(DECKS[sel.deckId].text)}</div></div>
+    ${loadoutPanel()}
     <button class="btn primary" data-a="start">Enter ${esc(MANSIONS.find((m) => m.id === sel.mansionId).name)}</button>
   </section>`;
 }
 
+function loadoutPanel() {
+  const m = ui.meta;
+  const slots = blueprintSlots(m);
+  const eq = m.equipped.slice(0, slots);
+  const ups = UPGRADES.filter((u) => upgradeLevel(m, u.id) && u.start).map((u) => `<span class="chip">${u.icon} ${esc(u.text(upgradeLevel(m, u.id)))}</span>`).join('');
+  const heir = hasFamilyChest(m)
+    ? `<div class="row wrap" style="margin-top:6px"><span class="eyebrow grow">Starting heirloom</span>${m.heirloomsFound.length
+      ? [null, ...m.heirloomsFound].map((h) => `<button class="btn small ${m.startHeirloom === h ? 'on' : ''}" style="box-shadow:none" data-a="startHeir" data-id="${h || ''}">${h ? `${HEIRLOOMS[h].icon} ${esc(HEIRLOOMS[h].name)}` : 'None'}</button>`).join('')
+      : '<span class="muted" style="font-size:13px">Find one in a run first.</span>'}</div>` : '';
+  return `<div class="glass panel seg-wrap" style="display:flex;flex-direction:column;gap:8px">
+    <div class="row"><h3 class="grow">Your loadout</h3><button class="btn small ghost" data-a="go" data-to="archive">Edit</button></div>
+    <div class="eyebrow">Blueprints ${eq.length}/${slots} · added to your deck</div>
+    <div class="row wrap">${eq.length ? eq.map((id) => `<span class="chip" style="color:${FAMILIES[ROOMS[id].family].color}">${ROOMS[id].icon} ${esc(ROOMS[id].name)}</span>`).join('') : '<span class="muted" style="font-size:13px">After each run you keep one room you drafted. Equip them here.</span>'}</div>
+    ${ups ? `<div class="eyebrow">Upgrades</div><div class="row wrap">${ups}</div>` : ''}
+    ${heir}
+  </div>`;
+}
+
 function renderArchive() {
+  const tabs = [['upgrades', 'Upgrades'], ['blueprints', `Blueprints · ${ui.meta.collection.length}`], ['unlocks', 'Unlocks']]
+    .map(([k, l]) => `<button class="btn small ${ui.tab === k ? 'on' : ''}" data-a="tab" data-id="${k}">${l}</button>`).join('');
+  const body = ui.tab === 'upgrades' ? renderUpgrades() : ui.tab === 'blueprints' ? renderBlueprints() : renderUnlocks();
+  return `<section class="screen">
+    <div class="topbar"><button class="icon-btn" data-a="go" data-to="title" aria-label="Back">←</button><h2>Archive</h2><span class="chip">🖋 ${ui.meta.ink} Ink</span></div>
+    <div class="seg">${tabs}</div>
+    ${body}
+  </section>`;
+}
+
+function renderUpgrades() {
+  const rows = UPGRADES.map((u) => {
+    const lvl = upgradeLevel(ui.meta, u.id);
+    const cost = upgradeCost(ui.meta, u.id);
+    const pips = Array.from({ length: u.max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('');
+    return `<div class="glass panel upg">
+      <div class="ui">${u.icon}</div>
+      <div class="grow"><h3>${esc(u.name)}</h3>
+        <div class="muted" style="font-size:13px">${lvl ? esc(u.text(lvl)) : `Next: ${esc(u.text(1))}`}${lvl && cost !== null ? ` <span style="opacity:.7">→ ${esc(u.text(lvl + 1))}</span>` : ''}</div>
+        <div class="pips">${pips}</div></div>
+      ${cost === null ? '<span class="chip good">Max</span>' : `<button class="btn small ${ui.meta.ink >= cost ? 'gold' : ''}" data-a="upg" data-id="${u.id}" ${ui.meta.ink < cost ? 'disabled' : ''}>🖋 ${cost}</button>`}
+    </div>`;
+  }).join('');
+  return `<p class="muted" style="margin:0">Permanent. Every run earns Ink, win or lose, so every attempt makes the next one stronger.</p><div class="list">${rows}</div>`;
+}
+
+function renderBlueprints() {
+  const m = ui.meta;
+  const slots = blueprintSlots(m);
+  const cards = m.collection.map((id) => {
+    const on = m.equipped.includes(id);
+    return `<div class="unlock">${cardHtml(null, id, -1, { static: true })}
+      <button class="btn small ${on ? 'primary' : ''}" data-a="equip" data-id="${id}">${on ? '✓ Equipped' : 'Equip'}</button></div>`;
+  }).join('');
+  const heir = m.heirloomsFound.map((h) => `<div class="fx-item"><span class="fi">${HEIRLOOMS[h].icon}</span><div><b>${esc(HEIRLOOMS[h].name)}</b><span>${esc(HEIRLOOMS[h].text)}</span></div></div>`).join('');
+  return `<p class="muted" style="margin:0">After every run you keep one room you drafted. Equipped Blueprints join your starting deck. <b>${m.equipped.length}/${slots} slots used</b>; buy more with the Drafting Table upgrade.</p>
+    ${cards ? `<div class="unlock-grid">${cards}</div>` : '<div class="glass panel muted">No Blueprints yet. Finish a run to keep your first.</div>'}
+    <h3 style="margin-top:8px">Heirlooms found · ${m.heirloomsFound.length}</h3>
+    <p class="muted" style="margin:0;font-size:13px">${hasFamilyChest(m) ? 'Pick one to start each run with on the mansion screen.' : 'Unlock the Family Chest to start runs with one of these.'}</p>
+    ${heir || '<div class="muted" style="font-size:13px">None yet.</div>'}`;
+}
+
+function renderUnlocks() {
   const items = UNLOCKS.map((u) => {
     const owned = ui.meta.owned.includes(u.id);
     let top;
@@ -197,11 +270,8 @@ function renderArchive() {
       ${owned ? '<span class="chip good" style="justify-content:center">✓ Owned</span>' : `<button class="btn small ${ui.meta.ink >= u.cost ? 'gold' : ''}" data-a="buy" data-id="${u.id}" ${ui.meta.ink < u.cost ? 'disabled' : ''}>🖋 ${u.cost} Ink</button>`}
     </div>`;
   }).join('');
-  return `<section class="screen">
-    <div class="topbar"><button class="icon-btn" data-a="go" data-to="title" aria-label="Back">←</button><h2>Archive</h2><span class="chip">🖋 ${ui.meta.ink}</span></div>
-    <p class="muted" style="margin:0">Every run earns Ink, win or lose. Unlocks here are <b>permanent</b>: new rooms join the pool, new plans and perks apply to every run.</p>
-    <div class="unlock-grid">${items}</div>
-  </section>`;
+  return `<p class="muted" style="margin:0">Permanent. New rooms join the random pool; new Plans and perks apply to every run.</p>
+    <div class="unlock-grid">${items}</div>`;
 }
 
 function renderRun() {
@@ -281,7 +351,7 @@ function cardHtml(s, id, i, { static: isStatic = false } = {}) {
   return `<div class="card r-${r.rarity} ${cant ? 'cant' : ''} ${isStatic ? 'static' : ''}" style="--fam:${fam.color};--deep:${fam.deep}" ${attrs}>
     <div class="card-in">
       ${r.cost ? `<span class="cost ${free ? 'free' : ''}">${r.cost}💎</span>` : ''}
-      <div class="art">${r.rarity !== 'common' ? `<span class="rtag">${RARITIES[r.rarity].name}</span>` : ''}<span class="emo">${r.icon}</span>${shapeSvg(roomDoors(id, mrot), fam.color)}</div>
+      <div class="art">${r.rarity === 'rare' || r.rarity === 'legendary' ? `<span class="rtag">${RARITIES[r.rarity].name}</span>` : ''}<span class="emo">${r.icon}</span>${shapeSvg(roomDoors(id, mrot), fam.color)}</div>
       <div class="body">
         <div class="nm">${esc(r.name)}</div>
         <div class="meta">${esc(fam.name)}</div>
@@ -385,7 +455,8 @@ function renderOverlay() {
         <li>Each draft costs <b>1 👣 Step</b>. Chambers (purple) give Steps back. Run out and the run ends.</li>
         <li>The Vault opens only while you hold its <b>💎 Gem toll</b>. Gardens (green) grow Gems; rare rooms cost Gems.</li>
         <li><b>🔒 Locked</b> doorways need a 🗝️ Key. If every way on is blocked, the run ends.</li>
-        <li><b>Heirlooms</b> last for the current run. <b>Archive</b> unlocks, bought with Ink, are permanent.</li>
+        <li><b>Heirlooms</b> last for the current run.</li>
+        <li><b>You get stronger every run.</b> Each run earns Ink for permanent Upgrades, and you keep one room you drafted as a Blueprint for your starting deck.</li>
       </ul>
       <div class="section-title eyebrow">Room families</div>
       ${Object.entries(FAMILIES).filter(([k]) => k !== 'special').map(([, f]) => `<div class="fx-item"><span class="fi" style="color:${f.color}">●</span><div><b style="color:${f.color}">${f.name}</b><span>${f.role}</span></div></div>`).join('')}
@@ -437,6 +508,9 @@ function renderOverlay() {
         <span>Ink earned</span><b>🖋 ${r.ink}</b>
       </div>
       ${ui.news.length ? `<ul>${ui.news.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+      ${ui.meta.pendingKeep ? `<div class="eyebrow">Keep a Blueprint</div>
+        <div class="muted" style="font-size:13px;margin-top:-6px">It joins your collection for good${ui.meta.equipped.length < blueprintSlots(ui.meta) ? ' and goes straight into your starting deck' : ''}.</div>
+        <div class="cards">${ui.meta.pendingKeep.map((id) => cardHtml(null, id, -1, { static: true }).replace('<div class="card ', `<div data-a="keep" data-id="${id}" role="button" tabindex="0" class="card `)).join('')}</div>` : ''}
       <div class="row"><button class="btn grow" data-a="resultBoard">View house</button><button class="btn grow" data-a="goSelect">Mansions</button></div>
       <button class="btn primary" data-a="again">Run again</button>
     </div></div>`;
@@ -494,6 +568,17 @@ function handle(el, e) {
       save(); break;
     }
     case 'pickDeck': ui.meta.last.deckId = el.dataset.id; save(); break;
+    case 'tab': ui.tab = el.dataset.id; break;
+    case 'upg':
+      try { ui.meta = buyUpgrade(ui.meta, el.dataset.id); save(); toast('Upgraded!'); buzz(20); } catch (err) { toast(err.message, true); }
+      break;
+    case 'equip':
+      try { ui.meta = toggleEquip(ui.meta, el.dataset.id); save(); } catch (err) { toast(err.message, true); }
+      break;
+    case 'keep':
+      ui.meta = keepBlueprint(ui.meta, el.dataset.id); save(); toast(`${ROOMS[el.dataset.id].name} added to your Blueprints`); buzz(20);
+      break;
+    case 'startHeir': ui.meta = setStartHeirloom(ui.meta, el.dataset.id || null); save(); break;
     case 'start': startRun(); return;
     case 'buy':
       try { ui.meta = buyUnlock(ui.meta, el.dataset.id); save(); toast('Unlocked!'); buzz(20); } catch (err) { toast(err.message, true); }

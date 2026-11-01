@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   newRun, act, openTargets, validRotations, rotateDoors, connectedSet, cellAt, roomDoors, isWon, vaultToll, gemCost,
 } from '../js/engine/engine.js';
-import { newMeta, applyResult, buyUnlock, mansionUnlocked } from '../js/engine/meta.js';
+import { newMeta, applyResult, buyUnlock, mansionUnlocked, buyUpgrade, keepBlueprint, toggleEquip, runOptions, migrateMeta } from '../js/engine/meta.js';
 import { MANSIONS, DECKS } from '../js/data/mansions.js';
 import { ROOMS } from '../js/data/rooms.js';
 import { HEIRLOOMS } from '../js/data/heirlooms.js';
@@ -214,4 +214,38 @@ test('meta: results, mansion unlocks, deeds, purchases', () => {
   meta = buyUnlock(meta, 'r_gallerywalk');
   assert.equal(meta.ink, 12);
   assert.throws(() => buyUnlock(meta, 'r_gallerywalk'));
+});
+
+test('progression: upgrades, kept blueprints and second wind make runs stronger', () => {
+  let meta = newMeta();
+  meta.ink = 100;
+  meta = buyUpgrade(meta, 'stamina');
+  meta = buyUpgrade(meta, 'stamina');
+  assert.equal(meta.upgrades.stamina, 2);
+  const lost = playOut(newRun({ seed: 'p1' }));
+  ({ meta } = applyResult(meta, lost));
+  assert.ok(meta.pendingKeep && meta.pendingKeep.length >= 1);
+  const kept = meta.pendingKeep[0];
+  meta = keepBlueprint(meta, kept);
+  assert.ok(meta.collection.includes(kept) && meta.equipped.includes(kept));
+  const opts = runOptions(meta, { mansionId: 'm1', deed: 0, deckId: 'standard', seed: 'p2' });
+  const base = newRun({ seed: 'p2' });
+  const strong = newRun(opts);
+  assert.equal(strong.res.steps, base.res.steps + 2);
+  assert.equal(strong.deck.length, base.deck.length + 1);
+  meta = toggleEquip(meta, kept);
+  assert.equal(meta.equipped.length, 0);
+  // Second wind
+  let s = newRun({ seed: 'p3', upgrades: { secondwind: 1 } });
+  s.res.steps = 1;
+  s.deck.push('passage', 'passage', 'passage');
+  s = act(act(act(s, { type: 'select', r: 6, c: 2 }), { type: 'pick', index: 0 }), { type: 'place' });
+  assert.equal(s.phase, 'door');
+  assert.equal(s.res.steps, 4);
+});
+
+test('old perks are refunded on migrate', () => {
+  const m = migrateMeta({ ...newMeta(), owned: ['p_die'], ink: 0 });
+  assert.equal(m.ink, 25);
+  assert.equal(m.owned.length, 0);
 });

@@ -5,6 +5,7 @@ import { ROOMS, SHAPES, RARITIES, isDraftable } from '../data/rooms.js';
 import { HEIRLOOMS, MAX_HEIRLOOMS } from '../data/heirlooms.js';
 import { MANSIONS, CURSES, DEEDS, DECKS, PERKS } from '../data/mansions.js';
 import { rand, shuffle, hashSeed } from './rng.js';
+import { UPGRADES } from '../data/progression.js';
 
 export const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]]; // [dr, dc] for N, E, S, W
 export const DIR_NAMES = ['N', 'E', 'S', 'W'];
@@ -63,7 +64,7 @@ export function randomRoom(s, pred = () => true) {
 }
 
 // ---------- setup ----------
-export function newRun({ seed = Date.now(), mansionId = 'm1', deed = 0, deckId = 'standard', unlockedRooms = [], perks = [] } = {}) {
+export function newRun({ seed = Date.now(), mansionId = 'm1', deed = 0, deckId = 'standard', unlockedRooms = [], perks = [], upgrades = {}, extraCards = [], startHeirloom = null } = {}) {
   const m = mansionById(mansionId);
   if (!m) throw new Error(`Unknown mansion ${mansionId}`);
   const s = {
@@ -82,10 +83,12 @@ export function newRun({ seed = Date.now(), mansionId = 'm1', deed = 0, deckId =
   setCell(s, m.vault.r, m.vault.c, mk('vault', m.vault.rot, true));
   for (const p of m.presets) setCell(s, p.r, p.c, mk(p.id, p.rot, true));
   s.pool = Object.keys(ROOMS).filter((id) => isDraftable(id) && (!ROOMS[id].unlock || unlockedRooms.includes(id)));
-  s.deck = [...DECKS[deckId].cards, ...unlockedRooms];
+  s.deck = [...DECKS[deckId].cards, ...unlockedRooms, ...extraCards.filter((id) => ROOMS[id])];
   for (let i = 0; i < (DECKS[deckId].fill ?? 18); i++) s.deck.push(randomRoom(s));
   for (const mod of getMods(s)) if (mod.start) mod.start(s);
   for (const p of perks) if (PERKS[p]) PERKS[p].start(s);
+  for (const u of UPGRADES) if (u.start && upgrades[u.id]) u.start(s, upgrades[u.id]);
+  if (startHeirloom && HEIRLOOMS[startHeirloom]) gainHeirloom(s, startHeirloom);
   s.res.steps = Math.max(1, s.res.steps);
   s.deck = shuffle(s, s.deck);
   log(s, `Welcome to ${m.name}.`);
@@ -280,6 +283,11 @@ function advance(s) {
   }
   s.phase = 'door';
   s.pending = null;
+  if (s.res.steps <= 0 && !(s.buffs.freeDraft > 0) && s.counters.secondWind > 0) {
+    s.counters.secondWind--;
+    s.res.steps += 4;
+    log(s, 'Second Wind: +4 Steps.');
+  }
   const cc = canContinue(s);
   if (!cc.ok) finish(s, false, cc.why);
 }

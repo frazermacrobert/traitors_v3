@@ -17,8 +17,7 @@ export const MANSIONS = [
   {
     id: 'm1', name: 'Hollow House', blurb: 'An empty plot. Learn the ropes.',
     w: 5, h: 8, entrance: { r: 7, c: 2, rot: 0 }, vault: { r: 0, c: 2, rot: 2 },
-    blocked: [], presets: [], lockedCells: [], lockChance: (r) => (r <= 2 ? 0.1 : 0), curse: 'dust', toll: 5,
-    start: (s) => { s.res.steps += 2; },
+    blocked: [], presets: [], lockedCells: [], lockChance: (r) => (r <= 3 ? 0.12 : 0), curse: 'dust', toll: 6,
   },
   {
     id: 'm2', name: 'Crooked House', blurb: 'Rubble blocks the direct route.',
@@ -120,15 +119,13 @@ export const UNLOCKS = [
   { id: 'r_bunkroom', kind: 'room', ref: 'bunkroom', cost: 10 },
   { id: 'r_commissary', kind: 'room', ref: 'commissary', cost: 12 },
   { id: 'r_topiary', kind: 'room', ref: 'topiary', cost: 10 },
-  { id: 'p_satchel', kind: 'perk', ref: 'satchel', cost: 15, name: 'Satchel', text: 'Start every run with +1 Gem.' },
   { id: 'r_clockwork', kind: 'room', ref: 'clockwork', cost: 18 },
   { id: 'd_gardener', kind: 'deck', ref: 'gardener', cost: 20 },
   { id: 'r_shrine', kind: 'room', ref: 'shrine', cost: 18 },
-  { id: 'p_die', kind: 'perk', ref: 'die', cost: 25, name: 'Loaded Die', text: 'Start every run with +1 Reroll.' },
   { id: 'r_ballroom', kind: 'room', ref: 'ballroom', cost: 25 },
   { id: 'd_nightwatch', kind: 'deck', ref: 'nightwatch', cost: 30 },
   { id: 'r_observatory', kind: 'room', ref: 'observatory', cost: 30 },
-  { id: 'p_heirloom', kind: 'perk', ref: 'heirloom', cost: 40, name: 'Family Chest', text: 'Start every run by choosing 1 of 3 Heirlooms.' },
+  { id: 'p_heirloom', kind: 'perk', ref: 'heirloom', cost: 30, name: 'Family Chest', text: 'Start every run with an Heirloom you have found before. Choose it before the run.' },
   { id: 'r_architect', kind: 'room', ref: 'architect', cost: 35 },
   { id: 'r_conservatory', kind: 'room', ref: 'conservatory', cost: 40 },
   { id: 'r_chapel', kind: 'room', ref: 'chapel', cost: 40 },
@@ -139,5 +136,5 @@ export const UNLOCKS = [
 export const PERKS = {
   satchel: { start: (s) => { s.res.gems += 1; } },
   die: { start: (s) => { s.res.rerolls += 1; } },
-  heirloom: { start: (s) => { s.queue.push('heirloom'); } },
+  heirloom: { start: () => {} }, // handled by runOptions.startHeirloom
 };
