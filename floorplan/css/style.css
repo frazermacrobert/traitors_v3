@@ -139,7 +139,7 @@ h3 { font-size: 15px; line-height: 1.15; }
 .nb { font: 400 14px var(--display); text-transform: uppercase; text-shadow: 2px 2px 0 var(--shadow); white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
 .pill {
   display: inline-flex; align-items: center; gap: 1px; padding: 3px 5px; border-radius: 5px;
-  background: var(--card); border: 2px solid var(--ink); font: 400 14px var(--display);
+  background: #fff; border: 2px solid var(--ink); font: 400 15px var(--display); color: var(--ink);
   font-variant-numeric: tabular-nums; box-shadow: 2px 2px 0 var(--shadow); white-space: nowrap; line-height: 1;
 }
 .pill .ico { width: 14px; height: 14px; }
