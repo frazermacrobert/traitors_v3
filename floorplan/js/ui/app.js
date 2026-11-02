@@ -5,7 +5,7 @@ import {
 } from '../engine/engine.js';
 import { checkClue } from '../engine/reconstruct.js';
 import { hashSeed } from '../engine/rng.js';
-import { OMENS, EVENTS, LANDINGS, WINGS, STEWARD_STORY } from '../data/nights.js';
+import { OMENS, EVENTS, LANDINGS, WINGS } from '../data/nights.js';
 import { sfx, setSound, soundOn } from './sound.js';
 import {
   migrateMeta, applyResult, buyUnlock, mansionUnlocked, availableDecks, runOptions, ownedOf,
@@ -62,11 +62,6 @@ function toast(msg, err = false) {
 const buzz = (ms = 12) => { try { navigator.vibrate?.(ms); } catch { /* ignore */ } };
 
 const RES_ICON = { steps: icon('steps'), gems: icon('gems'), keys: icon('keys'), coins: icon('coins'), rerolls: icon('rerolls') };
-const STEWARD_FACE = `<svg class="face" viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="2" width="22" height="16" fill="#1b1a1f"/><rect x="8" y="16" width="32" height="5" fill="#1b1a1f"/>
-  <ellipse cx="24" cy="31" rx="13" ry="14" fill="#f2dcc4" stroke="#1b1a1f" stroke-width="2.5"/><circle cx="19" cy="29" r="2" fill="#1b1a1f"/>
-  <circle cx="29" cy="29" r="4.5" fill="#e4eadc" stroke="#1b1a1f" stroke-width="2"/><circle cx="29" cy="29" r="1.6" fill="#1b1a1f"/><path d="M33 31 q3 6 1 12" fill="none" stroke="#1b1a1f" stroke-width="1.4"/>
-  <path d="M16 38 q8 -4 16 0" fill="none" stroke="#1b1a1f" stroke-width="2.5" stroke-linecap="round"/></svg>`;
-const stewardHtml = (s) => (s.steward ? `<div class="steward">${STEWARD_FACE}<i>${esc(s.steward)}</i></div>` : '');
 
 // ---------- actions ----------
 function doAct(action) {
