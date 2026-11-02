@@ -11,6 +11,7 @@ import { MANSIONS, DEEDS, DECKS, PERKS } from '../data/mansions.js';
 import { OMENS, HOUSE_ACTS, EVENTS, LANDINGS, WINGS, STEWARD, STEWARD_STORY } from '../data/nights.js';
 import { rand, shuffle, hashSeed } from './rng.js';
 import { UPGRADES } from '../data/progression.js';
+import { initReconstruct, reconstructAct } from './reconstruct.js';
 
 export const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]]; // [dr, dc] for N, E, S, W
 export const opp = (d) => (d + 2) % 4;
@@ -580,7 +581,10 @@ function clearNight(s) {
   for (const cell of s.cells) if (cell && cell.id && !cell.preset && cell.id !== 'closet') s.discard.push(cell.id);
   s.deck = shuffle(s, [...s.deck, ...s.discard]);
   s.discard = [];
-  if (s.night >= NIGHTS) { finish(s, true, 'vault'); return; }
+  if (s.night >= NIGHTS) {
+    if (s.mode === 'story') { enterReconstruct(s); return; }
+    finish(s, true, 'vault'); return;
+  }
   s.carry = Math.floor(s.res.steps / 2);
   log(s, `Night ${s.night} cleared!`);
   say(s, 'clear');
@@ -588,6 +592,17 @@ function clearNight(s) {
   s.landing = opts.map((l) => l.id);
   s.phase = 'landing';
   s.pending = null;
+}
+
+function enterReconstruct(s) {
+  s.nightsCleared++;
+  for (const m of getMods(s)) if (m.onNightClear) m.onNightClear(s);
+  s.score += 30 + s.res.steps * 3 + Math.max(0, 10 - s.dread);
+  s.reconstruct = initReconstruct(s);
+  s.phase = 'reconstruct';
+  s.pending = null;
+  log(s, 'The crime scene. Now reconstruct what happened.');
+  say(s, 'win');
 }
 
 function finish(s, won, why) {
@@ -845,6 +860,25 @@ export function act(prev, a) {
     }
     case 'abandon': {
       finish(s, false, 'abandon');
+      return s;
+    }
+    case 'rPlace': case 'rRemove': case 'rSwap': {
+      if (s.phase !== 'reconstruct' || !s.reconstruct) throw new Error('Not in reconstruction');
+      s.reconstruct = reconstructAct(s.reconstruct, a);
+      return s;
+    }
+    case 'rSubmit': {
+      if (s.phase !== 'reconstruct' || !s.reconstruct) throw new Error('Not in reconstruction');
+      s.reconstruct = reconstructAct(s.reconstruct, a);
+      if (s.reconstruct.phase === 'scored') {
+        s.score += s.reconstruct.score;
+        const bonus = s.reconstruct.correct === s.reconstruct.total ? 50 : 0;
+        s.score += bonus;
+        finish(s, true, 'vault');
+        s.result.reconstructScore = s.reconstruct.score;
+        s.result.reconstructCorrect = s.reconstruct.correct;
+        s.result.reconstructTotal = s.reconstruct.total;
+      }
       return s;
     }
     default:

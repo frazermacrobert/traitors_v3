@@ -129,7 +129,7 @@ export function botStep(s) {
 
 export function playOut(s, maxSteps = 3000) {
   let n = 0;
-  while (s.phase !== 'won' && s.phase !== 'lost') {
+  while (s.phase !== 'won' && s.phase !== 'lost' && s.phase !== 'reconstruct') {
     s = botStep(s);
     if (++n > maxSteps) throw new Error('bot: run did not terminate');
   }

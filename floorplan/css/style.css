@@ -321,6 +321,29 @@ h3 { font-size: 15px; line-height: 1.15; }
 .kr-body small { font: 700 10px var(--body); text-transform: uppercase; letter-spacing: .8px; color: var(--ink-soft); }
 .kr-body span { font-size: 12.5px; color: var(--ink); line-height: 1.25; }
 
+/* ---------- Reconstruction puzzle ---------- */
+.rc-run { display: flex; flex-direction: column; height: 100%; }
+.rc-bar { flex: none; }
+.rc-board .cell.rc-open { background: rgba(111, 159, 224, .12); cursor: pointer; }
+.rc-board .cell.rc-placed { cursor: pointer; outline: 2.5px solid transparent; transition: outline-color .15s; }
+.rc-board .cell.rc-placed:active { opacity: .8; }
+.rc-board .cell.rc-hl { outline: 3px solid var(--gold) !important; z-index: 2; }
+.rc-clues { padding: 8px 16px; background: var(--paper); border-top: 2px solid var(--ink); flex: none; }
+.rc-clue-head { font: 400 13px var(--display); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.rc-clue { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+.clue-ok { color: #4a9; font-weight: 700; width: 20px; text-align: center; }
+.clue-bad { color: #c44; font-weight: 700; width: 20px; text-align: center; }
+.clue-unk { color: #999; font-weight: 700; width: 20px; text-align: center; }
+.rc-tray { flex: none; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 2px solid var(--ink); background: var(--paper); }
+.rc-tray-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.rc-tray-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 8px; border: 2.5px solid var(--ink); background: #fff; cursor: pointer; flex: none; min-width: 64px; box-shadow: 2px 2px 0 var(--ink); font: inherit; color: inherit; }
+.rc-tray-item.selected { background: var(--gold); box-shadow: none; transform: translate(2px, 2px); }
+.rc-tray-item:active { transform: translate(2px, 2px); box-shadow: none; }
+.rc-ti-svg { width: 36px; height: 36px; position: relative; }
+.rc-ti-name { font: 400 10px var(--display); text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
+.rc-actions { display: flex; gap: 8px; }
+.rc-actions .btn { flex: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
