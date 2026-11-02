@@ -39,8 +39,9 @@ const ui = {
   tab: 'upgrades',
   confirmReset: false,
   flash: null,
-  rSelected: null, // reconstruction: selected tray index or {r,c} for placed room
-  rHighlight: null, // reconstruction: highlighted cell {r,c}
+  rSelected: null,
+  rHighlight: null,
+  helpPage: 0,
 };
 if (ui.run && (ui.run.v !== 2 || ui.run.phase === 'won' || ui.run.phase === 'lost')) ui.run = null;
 setSound(!!store.get('floorplan.sound'));
@@ -638,23 +639,36 @@ function renderOverlay() {
   if (o === 'help') {
     const runMode = ui.run?.mode || ui.meta.last.mode || 'endless';
     const isSH = runMode === 'story';
-    return sheet(`<h2>How to play</h2>
-      <ul>
-        <li>A run is <b>three ${isSH ? 'Scenes' : 'Nights'}</b>. Each ${isSH ? 'Scene' : 'Night'} the house builds a new floor. Reach the <b>🪜 Stairwell</b>; on ${isSH ? 'Scene' : 'Night'} 3, the <b>👑 ${isSH ? 'Crime Scene' : 'Vault'}</b>.</li>
-        <li>Each ${isSH ? 'Scene' : 'Night'} has a <b>goal</b> (hold enough Gems, Coins or Keys, or build a Wing) and an <b>Omen</b> that bends the rules.</li>
-        <li>Tap a glowing doorway. You're dealt <b>3 rooms</b>. Pick one; the others go to the discard pile.</li>
-        <li><b>Rotate</b> it so its doors lead where you want. It must connect back to the doorway.</li>
-        <li>Each draft costs <b>1 👣 Step</b>. Chambers (purple) give Steps back. Run out and the run ends.</li>
-        <li><b>😨 Dread</b> rises with every draft, faster if you sprawl. When it fills, the house acts: doors slam, floors collapse, rooms turn. Calming rooms lower it.</li>
-        <li>Connect <b>3+ rooms of one colour</b> to form a <b>Wing</b> for a bonus, and again each time it grows. <b>?</b> doorways hide events.</li>
-        <li>Between Nights, pick a <b>Landing</b>: rest, shop, burn cards, or take an Heirloom.</li>
-        <li><b>🔒 Locked</b> doorways need a 🗝️ Key. If every way on is blocked, the run ends.</li>
-        <li><b>Heirlooms</b> last for the current run.</li>
-        <li><b>You get stronger every run.</b> Each run earns Ink for permanent Upgrades, and you keep one room you drafted as a Blueprint for your starting deck.</li>
-      </ul>
-      <div class="section-title eyebrow">Room families</div>
-      ${Object.entries(FAMILIES).filter(([k]) => k !== 'special').map(([, f]) => `<div class="fx-item"><span class="fi" style="color:${f.color}">●</span><div><b style="color:${f.color}">${f.name}</b><span>${f.role}</span></div></div>`).join('')}
-      <button class="btn primary" data-a="close">Got it</button>`);
+    const N = isSH ? 'Scene' : 'Night';
+    const pages = [
+      { icon: '🏚️', title: 'The House', body: `Three ${N}s. Each builds a new floor. Reach the 🪜 Stairwell, or on ${N} 3 the 👑 ${isSH ? 'Crime Scene' : 'Vault'}.` },
+      { icon: '🚪', title: 'Draft Rooms', body: 'Tap a red doorway. Pick 1 of 3 rooms dealt from your deck. Rotate it, then place it.' },
+      { icon: '👣', title: 'Steps', body: 'Each draft costs 1 Step. Run out and the run ends. Purple Chambers give Steps back.' },
+      { icon: '🎯', title: 'Goals', body: `Each ${N} has a goal: collect Gems, Coins, Keys, or build a Wing. Meet it, then reach the exit.` },
+      { icon: '😨', title: 'Dread', body: 'Dread rises each draft. When it fills, the house acts: locks doors, collapses cells, or shifts rooms.' },
+      { icon: '🏗️', title: 'Wings', body: 'Connect 3+ rooms of one colour for a Wing bonus. Grow it for bigger rewards.' },
+      { icon: '🔑', title: 'Locks & Keys', body: 'Locked doorways need a Key. If all exits are locked and you have no keys, the run ends.' },
+      { icon: '✨', title: 'Tap Rooms', body: 'Some placed rooms glow gold. Tap them once per night during door selection for a bonus effect.' },
+      { icon: '🖋️', title: 'Getting Stronger', body: 'Each run earns Ink for permanent Upgrades. Keep one room as a Blueprint for your starting deck.' },
+    ];
+    const pg = ui.helpPage || 0;
+    const p = pages[pg];
+    const dots = pages.map((_, i) => `<span class="dot ${i === pg ? 'on' : ''}"></span>`).join('');
+    return `<div class="overlay" data-a="close"><div class="modal tut-modal" data-stop>
+      <div class="tut-card">
+        <div class="tut-icon">${p.icon}</div>
+        <h3>${p.title}</h3>
+        <p>${p.body}</p>
+      </div>
+      <div class="tut-dots">${dots}</div>
+      <div class="tut-nav">
+        ${pg > 0 ? '<button class="btn small" data-a="helpPrev">Back</button>' : '<span></span>'}
+        ${pg < pages.length - 1
+          ? '<button class="btn small primary" data-a="helpNext">Next</button>'
+          : '<button class="btn small primary" data-a="close">Got it</button>'}
+      </div>
+      <button class="btn ghost small" data-a="close" style="margin-top:4px">Skip</button>
+    </div></div>`;
   }
   if (o === 'settings') {
     return sheet(`<h2>Settings</h2>
@@ -778,7 +792,9 @@ function handle(el, e) {
     case 'renderRetry': render(); return;
     case 'go': ui.screen = el.dataset.to; ui.overlay = null; break;
     case 'resume': ui.screen = 'run'; break;
-    case 'help': ui.overlay = 'help'; break;
+    case 'help': ui.helpPage = 0; ui.overlay = 'help'; break;
+    case 'helpNext': ui.helpPage = Math.min((ui.helpPage || 0) + 1, 8); break;
+    case 'helpPrev': ui.helpPage = Math.max((ui.helpPage || 0) - 1, 0); break;
     case 'close':
       if (el.classList.contains('overlay') && e.target.closest('[data-stop]')) return;
       if (ui.overlay === 'help' && !ui.meta.seenHelp) { ui.meta.seenHelp = true; save(); }

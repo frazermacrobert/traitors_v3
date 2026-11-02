@@ -302,6 +302,15 @@ h3 { font-size: 15px; line-height: 1.15; }
 .fx-item b { display: block; font-size: 14px; }
 .fx-item span { font-size: 13px; color: var(--ink-soft); }
 .section-title { margin-top: 6px; }
+.tut-modal { max-height: 80dvh; align-items: center; text-align: center; }
+.tut-card { padding: 12px 0; }
+.tut-icon { font-size: 48px; line-height: 1; margin-bottom: 8px; }
+.tut-card h3 { font: 400 20px var(--display); text-transform: uppercase; margin: 0 0 6px; }
+.tut-card p { font-size: 15px; color: var(--ink-soft); margin: 0; line-height: 1.45; text-wrap: balance; }
+.tut-dots { display: flex; gap: 6px; justify-content: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); }
+.dot.on { background: var(--ink); }
+.tut-nav { display: flex; gap: 10px; justify-content: center; width: 100%; }
 .deck-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px; border: 2px solid var(--ink); background: #fff; }
 .deck-row .n { font: 400 14px var(--display); width: 30px; text-align: right; }
 .deck-row .mini { width: 30px; height: 30px; position: relative; flex: none; }
