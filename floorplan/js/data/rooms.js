@@ -144,6 +144,7 @@ export const ROOMS = {
   tuckshop: R('tuckshop', 'Tuck Shop', 'gold', 'D', 0, 'common', '🍬', 'Opens a shop.', { onPlace: (c) => c.queue('shop') }),
   counting: R('counting', 'Counting House', 'gold', 'D', 0, 'common', '🧮', '+4 Coins.', { onPlace: (c) => c.gain('coins', 4) }),
   strongroom: R('strongroom', 'Strongroom', 'gold', 'D', 0, 'common', '🔐', '+1 Key.', { onPlace: (c) => c.gain('keys', 1) }),
+  porter: R('porter', "Porter's Lodge", 'gold', 'I', 0, 'common', '🚪', '+1 Key, +1 Coin.', { onPlace: (c) => { c.gain('keys', 1); c.gain('coins', 1); } }),
   locksmith: R('locksmith', 'Locksmith', 'gold', 'L', 1, 'uncommon', '🔧', '+1 Key, +2 Coins.', { onPlace: (c) => { c.gain('keys', 1); c.gain('coins', 2); } }),
   keyrack: R('keyrack', 'Key Rack', 'gold', 'L', 0, 'uncommon', '🗝️', '+2 Keys. Lose 1 Step.', { onPlace: (c) => { c.gain('keys', 2); c.gain('steps', -1); } }),
   pawnshop: R('pawnshop', 'Pawnbroker', 'gold', 'T', 0, 'uncommon', '💱', 'Trade every 3 Coins you hold for 1 Gem.', {

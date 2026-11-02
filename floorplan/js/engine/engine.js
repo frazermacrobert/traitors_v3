@@ -194,6 +194,12 @@ function startNight(s, n, carry) {
   s.dreadPrev = 0;
   s.dreadNext = Math.max(3, modValue(s, 'dreadEvery', m.dreadEvery[n - 1]) + s.calmBonus);
   s.calmBonus = 0;
+  // When the Night's goal requires Keys, inject extra key rooms into the deck so key goals are achievable.
+  if (gd.kind === 'toll' && gd.res === 'keys') {
+    const inject = 2;
+    for (let i = 0; i < inject; i++) s.deck.splice(Math.floor(rand(s) * (s.deck.length + 1)), 0, 'strongroom');
+    log(s, 'Keys are prized tonight. Extra Strongrooms shuffled in.');
+  }
   if (omen.nightStart) omen.nightStart(s);
   s.between = false;
   s.phase = 'door';

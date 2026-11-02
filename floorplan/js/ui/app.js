@@ -306,45 +306,35 @@ function renderRun() {
   const m = MANSIONS.find((x) => x.id === s.mansionId);
   const tgt = goalTarget(s);
   const gr = s.goal.kind === 'toll' ? s.goal.res : null;
-  const resBox = (k, ic, label) => {
+  const pill = (k, ic) => {
     const isGoal = gr === k;
-    const pct = isGoal && tgt ? Math.min(100, (100 * s.res[k]) / tgt) : 0;
-    return `<div class="res ${k} ${isGoal && s.res[k] >= tgt ? 'met' : ''} ${isGoal ? 'goalres' : ''} ${ui.bumped.includes(k) ? 'bump' : ''}"><span class="v"><span class="ic">${ic}</span>${s.res[k]}${isGoal ? `<span style="font-size:12px;opacity:.6">/${tgt}</span>` : ''}</span><small>${label}</small>${isGoal ? `<span class="bar" style="width:${pct}%"></span>` : ''}</div>`;
+    return `<span class="pill ${k} ${isGoal && s.res[k] >= tgt ? 'met' : ''} ${isGoal ? 'goalres' : ''} ${ui.bumped.includes(k) ? 'bump' : ''}">${ic}${s.res[k]}${isGoal ? `<small>/${tgt}</small>` : ''}</span>`;
   };
-  const res = `
-    <div class="res steps ${s.res.steps <= 3 ? 'low' : ''} ${ui.bumped.includes('steps') ? 'bump' : ''}"><span class="v"><span class="ic">${icon('steps')}</span>${s.res.steps}</span><small>Steps</small></div>
-    ${resBox('gems', icon('gems'), 'Gems')}${resBox('keys', icon('keys'), 'Keys')}${resBox('coins', icon('coins'), 'Coins')}
-    <div class="res rerolls ${ui.bumped.includes('rerolls') ? 'bump' : ''}"><span class="v"><span class="ic">${icon('rerolls')}</span>${s.res.rerolls}</span><small>Rerolls</small></div>`;
   const fx = activeEffects(s);
   const heir = s.heirlooms.map((h) => `<span class="heir-dot" data-a="effects" title="${esc(HEIRLOOMS[h].name)}">${HEIRLOOMS[h].icon}</span>`).join('');
+  const dSpan = Math.max(1, s.dreadNext - (s.dreadPrev || 0));
+  const dLo = s.dreadNext - dSpan;
+  const dPct = Math.max(0, Math.min(100, (100 * (s.dread - dLo)) / dSpan));
+  const dLeft = Math.max(0, s.dreadNext - s.dread);
   return `<div class="run">
-    <div class="run-head">
-      <button class="icon-btn" data-a="menu" aria-label="Menu">☰</button>
-      <div class="name"><b>${esc(m.name)} · Night ${s.night}/${NIGHTS}</b><span data-a="effects"><span class="emo">${OMENS[s.omen].icon}</span> ${esc(OMENS[s.omen].name)}${s.deed ? ` · Deed ${s.deed}` : ''}</span></div>
-      <button class="icon-btn" data-a="help" aria-label="How to play">?</button>
-    </div>
-    <div class="hud">${res}</div>
-    ${dreadBar(s)}
-    <div class="strip">
-      <span class="chip" data-a="effects">Effects · ${fx.count}</span>
-      <span class="chip" data-a="deck">${icon('deck')} ${s.deck.length} · discard ${s.discard.length}</span>
+    <div class="run-bar">
+      <button class="menu-btn" data-a="menu" aria-label="Menu">${icon('menu')}</button>
+      <span class="nb" data-a="effects"><span class="emo">${OMENS[s.omen].icon}</span>N${s.night}</span>
+      <span class="pill steps ${s.res.steps <= 3 ? 'low' : ''} ${ui.bumped.includes('steps') ? 'bump' : ''}">${icon('steps')}${s.res.steps}</span>
+      ${pill('gems', icon('gems'))}${pill('keys', icon('keys'))}${pill('coins', icon('coins'))}
+      <span class="pill rerolls ${ui.bumped.includes('rerolls') ? 'bump' : ''}">${icon('rerolls')}${s.res.rerolls}</span>
+      <button class="bag-btn" data-a="deck" aria-label="Bag">${icon('deck')}<small>${s.deck.length}</small></button>
       ${heir}
+      <button class="help-btn" data-a="help" aria-label="Help">?</button>
     </div>
+    <div class="dread-slim ${dLeft <= 2 ? 'near' : ''}" data-a="dreadinfo" role="button"><span class="df" style="width:${dPct}%"></span></div>
     <div class="board-wrap"><div class="sheet"><div class="board ${ui.flash ? `flash-${ui.flash}` : ''}" style="--cols:${s.w}">${renderBoard(s)}</div>
       <div class="titleblock"><span>Floor ${s.night} of ${NIGHTS} · ${esc(m.name)}</span><span>scale 1:50</span></div></div></div>
     <div class="tray">${renderTray(s)}</div>
   </div>`;
 }
 
-function dreadBar(s) {
-  const span = Math.max(1, s.dreadNext - (s.dreadPrev || 0));
-  const lo = s.dreadNext - span;
-  const pct = Math.max(0, Math.min(100, (100 * (s.dread - lo)) / span));
-  const left = Math.max(0, s.dreadNext - s.dread);
-  return `<div class="dread ${left <= 2 ? 'near' : ''}" data-a="dreadinfo" role="button" aria-label="Dread">
-    <span class="dl">${icon('dread')} Dread</span><span class="dt"><span class="df" style="width:${pct}%"></span></span>
-    <span class="dn">${left ? `house acts in ${left}` : 'the house stirs…'}</span></div>`;
-}
+// dreadBar removed: now inline in renderRun as .dread-slim
 
 function renderBoard(s) {
   const conn = connectedSet(s);
@@ -414,15 +404,12 @@ function renderTray(s) {
       const tgt = goalTarget(s);
       const prog = goalProgress(s);
       const where = icon(s.night === NIGHTS ? 'vault' : 'stair');
-      const reached = vaultConnected(s);
+      const met = goalMet(s);
       const gl = s.goal.kind === 'wing'
-        ? `${icon('wing')} Wing ${prog}/${tgt} <span class="muted">(connected rooms of one colour)</span>`
-        : `${RES_ICON2[s.goal.res]} ${prog}/${tgt} ${RES_NAMES[s.goal.res]}`;
-      return `${stewardHtml(s)}
-        <div class="goal"><span class="gi">${where}</span><div class="grow">${reached
-        ? `<b>${s.night === NIGHTS ? 'The Vault' : 'The Stairwell'} is reached but sealed.</b> ${gl}`
-        : `<b>${esc(goalText(s))}</b><div class="gprog">${gl} ${goalMet(s) ? '<b style="color:#2f6b3a">✓ ready</b>' : ''}</div>`}</div></div>
-        <div class="hint">Tap a red-pencil doorway to draft a room (costs 1 Step).${drawCount(s) !== 3 ? ` Next draft shows <b>${drawCount(s)}</b> cards.` : ''} <b>?</b> doors hide events.</div>`;
+        ? `${icon('wing')} Wing ${prog}/${tgt}`
+        : `${RES_ICON2[s.goal.res]} ${prog}/${tgt}`;
+      const hint = s.drafts < 3 ? `<div class="hint">Tap a red doorway to draft.${drawCount(s) !== 3 ? ` Next: <b>${drawCount(s)}</b> cards.` : ''}</div>` : '';
+      return `<div class="goal-line">${where}<span class="grow">${gl} ${met ? '<b class="met-tag">✓</b>' : ''}</span><button class="btn small ghost" data-a="effects" style="min-height:34px;padding:4px 10px">Effects · ${activeEffects(s).count}</button></div>${hint}`;
     }
     case 'card': {
       const anyOk = p.offers.some((id) => gemCost(s, id) <= s.res.gems);
@@ -459,10 +446,9 @@ function renderTray(s) {
     case 'landing': {
       const opts = s.landing.map((id, i) => { const l = LANDINGS.find((x) => x.id === id); return `<div class="card heir static" data-a="land" data-i="${i}" role="button" tabindex="0"><div class="card-in">
         <div class="art"><span class="emo">${l.icon}</span></div><div class="body"><div class="nm">${esc(l.name)}</div><div class="tx">${esc(l.text)}</div></div></div></div>`; }).join('');
-      return `<div class="tray-head"><h3>🌙 Night ${s.night} cleared. Choose a Landing</h3></div>
-        ${stewardHtml(s)}
+      return `<div class="tray-head"><h3>🌙 Night ${s.night} cleared</h3></div>
         <div class="cards">${opts}</div>
-        <div class="hint" style="font-size:12px">You carry ${Math.floor(s.res.steps / 2)} spare Steps, your deck, Heirlooms and resources up to Night ${s.night + 1}.</div>`;
+        <div class="hint" style="font-size:12px">Carry ${Math.floor(s.res.steps / 2)} Steps + your deck up to Night ${s.night + 1}.</div>`;
     }
     case 'heirloom': {
       const cards = s.heirloomOffer.map((h, i) => `<div class="card heir" data-a="heir" data-i="${i}" role="button" tabindex="0"><div class="card-in">
@@ -591,8 +577,14 @@ function renderOverlay() {
       </div>
       ${ui.news.length ? `<ul>${ui.news.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       ${ui.meta.pendingKeep ? `<div class="eyebrow">Keep a Blueprint</div>
-        <div class="muted" style="font-size:13px;margin-top:-6px">It joins your collection for good${ui.meta.equipped.length < blueprintSlots(ui.meta) ? ' and goes straight into your starting deck' : ''}.</div>
-        <div class="cards">${ui.meta.pendingKeep.map((id) => cardHtml(null, id, -1, { static: true }).replace('<div class="card ', `<div data-a="keep" data-id="${id}" role="button" tabindex="0" class="card `)).join('')}</div>` : ''}
+        <div class="muted" style="font-size:13px;margin-top:-6px">Joins your collection${ui.meta.equipped.length < blueprintSlots(ui.meta) ? ' and starting deck' : ''}.</div>
+        <div class="keep-list">${ui.meta.pendingKeep.map((id) => {
+          const rm = ROOMS[id]; const fam = FAMILIES[rm.family];
+          return `<button class="keep-row" data-a="keep" data-id="${id}">
+            <span class="kr-tile">${roomSvg(id, roomDoors(id, 0), { label: false })}</span>
+            <span class="kr-body"><b style="color:${fam.color}">${esc(rm.name)}</b><small>${esc(fam.name)} · ${rm.rarity}</small><span>${esc(rm.text)}</span></span>
+          </button>`;
+        }).join('')}</div>` : ''}
       <div class="row"><button class="btn grow" data-a="resultBoard">View house</button><button class="btn grow" data-a="goSelect">Mansions</button></div>
       <button class="btn primary" data-a="again">Run again</button>
     </div></div>`;
@@ -615,8 +607,8 @@ function sizeBoard() {
   const wrap = $app.querySelector('.board-wrap');
   const board = $app.querySelector('.board');
   if (!wrap || !board || !ui.run) return;
-  const w = wrap.clientWidth - 40, h = wrap.clientHeight - 46;
-  const next = Math.max(28, Math.floor(Math.min(w / ui.run.w, h / ui.run.h, 88)));
+  const w = wrap.clientWidth - 24, h = wrap.clientHeight - 32;
+  const next = Math.max(28, Math.floor(Math.min(w / ui.run.w, h / ui.run.h, 100)));
   board.style.setProperty('--cell', `${next}px`);
   if ((next >= 58) !== (cellSize >= 58)) { cellSize = next; board.innerHTML = renderBoard(ui.run); }
   cellSize = next;

@@ -56,7 +56,7 @@ export const DECKS = {
       herb: 2, fern: 1, greenhouse: 1, terrace: 1,
       guest: 2, nursery: 1, napnook: 1, hearth: 1,
       passage: 2, bend: 2, junction: 2, crossway: 1, lamplit: 1,
-      tuckshop: 1, strongroom: 1, counting: 1,
+      tuckshop: 1, strongroom: 2, porter: 1, counting: 1,
       furnace: 1, winecellar: 1, trophy: 1,
     }),
   },
