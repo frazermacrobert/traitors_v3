@@ -76,35 +76,39 @@ function doAct(action) {
     toast(e.message, true);
     sfx('error');
     buzz([20, 40, 20]);
-    render(); // resync the screen with the real state
+    render();
     return;
   }
-  const s = ui.run;
-  ui.flash = null;
-  if ((s.lastAct?.n || 0) > (before.lastAct?.n || 0)) { ui.flash = 'dread'; sfx('dread'); buzz([40, 30, 60]); }
-  else if ((s.lastWing?.n || 0) > (before.lastWing?.n || 0)) { ui.flash = 'wing'; sfx('wing'); }
-  else if (s.phase === 'discovery' && before.phase !== 'discovery') { ui.flash = 'wing'; sfx('wing'); }
-  else if (s.phase === 'event' && before.phase !== 'event') sfx('mystery');
-  else if (s.night > before.night || s.phase === 'landing') sfx('clear');
-  else if (action.type === 'place') sfx('place');
-  else if (action.type === 'select') sfx('deal');
-  else sfx('tap');
-  ui.bumped = Object.keys(s.res).filter((k) => s.res[k] !== before.res[k]);
-  ui.popups = [];
-  ui.fresh = null;
-  if (action.type === 'place') {
-    const { r, c } = before.pending;
-    ui.fresh = `${r},${c}`;
-    ui.popups = Object.keys(RES_ICON).map((k) => [k, s.res[k] - before.res[k]]).filter(([, d]) => d)
-      .map(([k, d], i) => ({ r, c, i, neg: d < 0, text: `${d > 0 ? '+' : ''}${d}${RES_ICON[k]}` }));
-    buzz(15);
-  } else if (action.type === 'select') {
-    ui.popups = before.res.steps !== s.res.steps ? [{ r: action.r, c: action.c, i: 0, neg: true, text: `−${before.res.steps - s.res.steps}${RES_ICON.steps}` }] : [];
+  try {
+    const s = ui.run;
+    ui.flash = null;
+    if ((s.lastAct?.n || 0) > (before.lastAct?.n || 0)) { ui.flash = 'dread'; sfx('dread'); buzz([40, 30, 60]); }
+    else if ((s.lastWing?.n || 0) > (before.lastWing?.n || 0)) { ui.flash = 'wing'; sfx('wing'); }
+    else if (s.phase === 'discovery' && before.phase !== 'discovery') { ui.flash = 'wing'; sfx('wing'); }
+    else if (s.phase === 'event' && before.phase !== 'event') sfx('mystery');
+    else if (s.night > before.night || s.phase === 'landing') sfx('clear');
+    else if (action.type === 'place') sfx('place');
+    else if (action.type === 'select') sfx('deal');
+    else sfx('tap');
+    ui.bumped = Object.keys(s.res).filter((k) => s.res[k] !== before.res[k]);
+    ui.popups = [];
+    ui.fresh = null;
+    if (action.type === 'place' && before.pending) {
+      const { r, c } = before.pending;
+      ui.fresh = `${r},${c}`;
+      ui.popups = Object.keys(RES_ICON).map((k) => [k, s.res[k] - before.res[k]]).filter(([, d]) => d)
+        .map(([k, d], i) => ({ r, c, i, neg: d < 0, text: `${d > 0 ? '+' : ''}${d}${RES_ICON[k]}` }));
+      buzz(15);
+    } else if (action.type === 'select') {
+      ui.popups = before.res.steps !== s.res.steps ? [{ r: action.r, c: action.c, i: 0, neg: true, text: `${RES_ICON.steps} -${before.res.steps - s.res.steps}` }] : [];
+    }
+    const fresh = Math.min(s.log.length, (s.logCount || 0) - (before.logCount || 0));
+    const interesting = (fresh > 0 ? s.log.slice(-fresh) : []).filter((l) => !l.startsWith('Placed'));
+    if (interesting.length && s.phase !== 'won' && s.phase !== 'lost') toast(interesting[interesting.length - 1]);
+    if ((s.phase === 'won' || s.phase === 'lost') && before.phase !== 'won' && before.phase !== 'lost') endRun();
+  } catch (e) {
+    console.error('Post-action error:', e);
   }
-  const fresh = Math.min(s.log.length, (s.logCount || 0) - (before.logCount || 0));
-  const interesting = (fresh > 0 ? s.log.slice(-fresh) : []).filter((l) => !l.startsWith('Placed'));
-  if (interesting.length && s.phase !== 'won' && s.phase !== 'lost') toast(interesting[interesting.length - 1]);
-  if ((s.phase === 'won' || s.phase === 'lost') && before.phase !== 'won' && before.phase !== 'lost') endRun();
   save();
   render();
 }
@@ -133,9 +137,18 @@ function startRun() {
 
 // ---------- render ----------
 function render() {
-  const fn = { title: renderTitle, select: renderSelect, archive: renderArchive, run: ui.run?.phase === 'reconstruct' ? renderReconstruct : renderRun }[ui.screen];
-  $app.innerHTML = fn() + renderOverlay();
-  if (ui.screen === 'run') sizeBoard();
+  try {
+    const fn = { title: renderTitle, select: renderSelect, archive: renderArchive, run: ui.run?.phase === 'reconstruct' ? renderReconstruct : renderRun }[ui.screen];
+    $app.innerHTML = fn() + renderOverlay();
+    if (ui.screen === 'run') sizeBoard();
+  } catch (e) {
+    console.error('Render error:', e);
+    $app.innerHTML = `<section class="screen"><div class="paper panel" style="margin:24px;text-align:center">
+      <h2>Something went wrong</h2><p class="muted">${esc(e.message)}</p>
+      <button class="btn primary" data-a="renderRetry">Tap to retry</button>
+      <button class="btn" data-a="home" style="margin-top:8px">Return to title</button>
+    </div></section>`;
+  }
 }
 
 function renderTitle() {
@@ -457,10 +470,15 @@ function renderBoard(s) {
       if (cell && cell.id) {
         const locks = [0, 1, 2, 3].map((d) => s.locks[`${r},${c},${d}`]);
         const isGoal = isVault(cell.id) || cell.id === 'stair';
+        const room = ROOMS[cell.id];
+        const canTap = s.phase === 'door' && room && room.tap && !s.tapped[k];
+        const tappedAlready = room && room.tap && s.tapped[k];
         const extra = isGoal
           ? `<g transform="translate(50 79)"><rect x="-17" y="-11" width="34" height="18" fill="${ready ? '#7cc47a' : '#fbf8ef'}" stroke="#1b1a1f" stroke-width="2.5"/><text y="4" text-anchor="middle" font-size="13" font-family="'Archivo Black', sans-serif" fill="#1b1a1f">${tgt}${gIcon}</text></g>` : '';
         const shifted = s.lastShift === r * s.w + c && ui.flash === 'dread' ? 'shifted' : '';
-        html += `<div class="cell room ${isGoal ? `vault ${ready ? 'ready' : ''}` : conn.has(k) ? '' : 'disconnected'} ${ui.fresh === k ? 'fresh' : ''} ${shifted}" data-a="info" data-id="${cell.id}">${roomSvg(cell.id, cell.doors, { locks, label: !isGoal && cellSize >= 58, extra })}</div>`;
+        const tapCls = canTap ? 'tappable' : tappedAlready ? 'tapped-done' : '';
+        const tapAction = canTap ? `data-a="tapRoom" data-r="${r}" data-c="${c}"` : `data-a="info" data-id="${cell.id}"`;
+        html += `<div class="cell room ${isGoal ? `vault ${ready ? 'ready' : ''}` : conn.has(k) ? '' : 'disconnected'} ${ui.fresh === k ? 'fresh' : ''} ${shifted} ${tapCls}" ${tapAction}>${roomSvg(cell.id, cell.doors, { locks, label: !isGoal && cellSize >= 58, extra })}${canTap ? '<span class="tap-badge">TAP</span>' : ''}</div>`;
         continue;
       }
       if (p && p.r === r && p.c === c) {
@@ -743,7 +761,7 @@ function sizeBoard() {
 window.addEventListener('resize', () => { if (ui.screen === 'run') sizeBoard(); });
 
 // ---------- input ----------
-const PHASE_FOR = { select: 'door', pick: 'card', closet: 'card', reroll: 'card', unpick: 'place', rot: 'place', place: 'place',
+const PHASE_FOR = { select: 'door', tapRoom: 'door', pick: 'card', closet: 'card', reroll: 'card', unpick: 'place', rot: 'place', place: 'place',
   buyItem: 'shop', leave: 'shop', heir: 'heirloom', choose: 'event', land: 'landing', discPick: 'discovery',
   rcTray: 'reconstruct', rcCell: 'reconstruct', rcSubmit: 'reconstruct', rcRetry: 'reconstruct', rSkip: 'reconstruct' };
 let lastRunTap = 0;
@@ -757,6 +775,7 @@ function handle(el, e) {
   }
   const s = ui.run;
   switch (a) {
+    case 'renderRetry': render(); return;
     case 'go': ui.screen = el.dataset.to; ui.overlay = null; break;
     case 'resume': ui.screen = 'run'; break;
     case 'help': ui.overlay = 'help'; break;
@@ -808,6 +827,7 @@ function handle(el, e) {
     case 'buy':
       try { ui.meta = buyUnlock(ui.meta, el.dataset.id); save(); toast('Unlocked!'); buzz(20); } catch (err) { toast(err.message, true); }
       break;
+    case 'tapRoom': return doAct({ type: 'tapRoom', r: Number(el.dataset.r), c: Number(el.dataset.c) });
     case 'select': return doAct({ type: 'select', r: Number(el.dataset.r), c: Number(el.dataset.c) });
     case 'pick': return doAct({ type: 'pick', index: Number(el.dataset.i) });
     case 'closet': return doAct({ type: 'pick', index: -1 });
@@ -888,7 +908,7 @@ function handle(el, e) {
 }
 $app.addEventListener('click', (e) => {
   const el = e.target.closest('[data-a]');
-  if (el) handle(el, e);
+  if (el) try { handle(el, e); } catch (err) { console.error('Handler error:', err); render(); }
 });
 
 // Keyboard support for desktop testing.

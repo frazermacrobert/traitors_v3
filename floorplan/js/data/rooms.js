@@ -54,7 +54,10 @@ export const ROOMS = {
     onPlace: (c) => c.gain('coins', 1 + adj(c, 'blue')),
   }),
   cloakroom: R('cloakroom', 'Cloakroom', 'blue', 'D', 0, 'common', '🧥', 'Burn the worst card in your deck.', { onPlace: (c) => c.burn(1) }),
-  library: R('library', 'Library', 'blue', 'T', 1, 'uncommon', '📚', 'Your next 2 drafts show +1 card.', { onPlace: (c) => c.buff('extraDraw', 2) }),
+  library: R('library', 'Library', 'blue', 'T', 1, 'uncommon', '📚', 'Next 2 drafts show +1 card. Tap: +1 Reroll.', {
+    onPlace: (c) => c.buff('extraDraw', 2),
+    tap: (c) => c.gain('rerolls', 1),
+  }),
   atlas: R('atlas', 'Atlas Room', 'blue', 'L', 1, 'uncommon', '🗺️', '+1 Reroll.', { onPlace: (c) => c.gain('rerolls', 1) }),
   peephole: R('peephole', 'Spy Hole', 'blue', 'D', 0, 'uncommon', '🔍', 'Your next draft shows 2 extra cards.', { onPlace: (c) => c.buff('bigDraw', 1) }),
   billiard: R('billiard', 'Billiard Room', 'blue', 'X', 1, 'uncommon', '🎱', 'Your next draft: every card costs 0 Gems.', { onPlace: (c) => c.buff('freeCost', 1) }),
@@ -72,7 +75,10 @@ export const ROOMS = {
   // ---- Green Gardens: gems & adjacency ----
   herb: R('herb', 'Herb Garden', 'green', 'D', 0, 'common', '🌿', '+1 Gem, +1 more per adjacent Garden.', { onPlace: (c) => c.gain('gems', 1 + adj(c, 'green')) }),
   fern: R('fern', 'Fern Walk', 'green', 'I', 0, 'common', '🌱', '+1 Gem.', { onPlace: (c) => c.gain('gems', 1) }),
-  greenhouse: R('greenhouse', 'Greenhouse', 'green', 'L', 0, 'common', '🪴', '+1 Gem per adjacent Garden (min 1).', { onPlace: (c) => c.gain('gems', Math.max(1, adj(c, 'green'))) }),
+  greenhouse: R('greenhouse', 'Greenhouse', 'green', 'L', 0, 'common', '🪴', '+1 Gem per adjacent Garden (min 1). Tap: +1 Gem.', {
+    onPlace: (c) => c.gain('gems', Math.max(1, adj(c, 'green'))),
+    tap: (c) => c.gain('gems', 1),
+  }),
   terrace: R('terrace', 'Terrace', 'green', 'L', 0, 'common', '☀️', '+1 Gem, +1 Step.', { onPlace: (c) => { c.gain('gems', 1); c.gain('steps', 1); } }),
   rosegarden: R('rosegarden', 'Rose Garden', 'green', 'T', 0, 'common', '🌹', '+1 Gem. +2 more if it touches the outer wall.', {
     onPlace: (c) => c.gain('gems', c.onEdge() ? 3 : 1),
@@ -95,13 +101,19 @@ export const ROOMS = {
   // ---- Violet Chambers: steps ----
   guest: R('guest', 'Guest Room', 'violet', 'D', 0, 'common', '🛏️', '+3 Steps.', { onPlace: (c) => c.gain('steps', 3) }),
   nursery: R('nursery', 'Nursery', 'violet', 'L', 0, 'common', '🧸', '+2 Steps.', { onPlace: (c) => c.gain('steps', 2) }),
-  hearth: R('hearth', 'Hearth Room', 'violet', 'L', 0, 'common', '🔥', '+1 Step. Calms the house: −3 Dread.', { calm: 3, onPlace: (c) => c.gain('steps', 1) }),
+  hearth: R('hearth', 'Hearth Room', 'violet', 'L', 0, 'common', '🔥', '+1 Step. Calm 3. Tap: calm 2 more.', {
+    calm: 3, onPlace: (c) => c.gain('steps', 1),
+    tap: (c) => c.dread(-2),
+  }),
   dressing: R('dressing', 'Dressing Room', 'violet', 'I', 0, 'common', '👗', '+1 Step, +1 Coin.', { onPlace: (c) => { c.gain('steps', 1); c.gain('coins', 1); } }),
   napnook: R('napnook', 'Nap Nook', 'violet', 'D', 0, 'common', '💤', '+2 Steps, or +4 if you have 3 or fewer.', {
     onPlace: (c) => c.gain('steps', c.s.res.steps <= 3 ? 4 : 2),
   }),
   kitchen: R('kitchen', 'Kitchen', 'violet', 'L', 0, 'common', '🍳', '+1 Step per adjacent room (max 3).', { onPlace: (c) => c.gain('steps', Math.min(3, c.neighbors().length)) }),
-  sunroom: R('sunroom', 'Sunroom', 'violet', 'T', 1, 'uncommon', '🌤️', '+3 Steps.', { onPlace: (c) => c.gain('steps', 3) }),
+  sunroom: R('sunroom', 'Sunroom', 'violet', 'T', 1, 'uncommon', '🌤️', '+3 Steps. Tap: +1 Step.', {
+    onPlace: (c) => c.gain('steps', 3),
+    tap: (c) => c.gain('steps', 1),
+  }),
   bathhouse: R('bathhouse', 'Bathhouse', 'violet', 'T', 0, 'uncommon', '🛁', '+1 Step per connected neighbour.', { onPlace: (c) => c.gain('steps', conn(c)) }),
   infirmary: R('infirmary', 'Infirmary', 'violet', 'L', 1, 'uncommon', '🩺', '+6 Steps if you have 5 or fewer, otherwise +1.', {
     onPlace: (c) => c.gain('steps', c.s.res.steps <= 5 ? 6 : 1),
@@ -143,9 +155,15 @@ export const ROOMS = {
   }),
 
   // ---- Gold Shops: economy ----
-  tuckshop: R('tuckshop', 'Tuck Shop', 'gold', 'D', 0, 'common', '🍬', 'Opens a shop.', { onPlace: (c) => c.queue('shop') }),
+  tuckshop: R('tuckshop', 'Tuck Shop', 'gold', 'D', 0, 'common', '🍬', 'Opens a shop. Tap: open shop again.', {
+    onPlace: (c) => c.queue('shop'),
+    tap: (c) => c.queue('shop'),
+  }),
   counting: R('counting', 'Counting House', 'gold', 'D', 0, 'common', '🧮', '+4 Coins.', { onPlace: (c) => c.gain('coins', 4) }),
-  strongroom: R('strongroom', 'Strongroom', 'gold', 'D', 0, 'common', '🔐', '+1 Key.', { onPlace: (c) => c.gain('keys', 1) }),
+  strongroom: R('strongroom', 'Strongroom', 'gold', 'D', 0, 'common', '🔐', '+1 Key. Tap: +1 Coin.', {
+    onPlace: (c) => c.gain('keys', 1),
+    tap: (c) => c.gain('coins', 1),
+  }),
   porter: R('porter', "Porter's Lodge", 'gold', 'I', 0, 'common', '🚪', '+1 Key, +1 Coin.', { onPlace: (c) => { c.gain('keys', 1); c.gain('coins', 1); } }),
   locksmith: R('locksmith', 'Locksmith', 'gold', 'L', 1, 'uncommon', '🔧', '+1 Key, +2 Coins.', { onPlace: (c) => { c.gain('keys', 1); c.gain('coins', 2); } }),
   keyrack: R('keyrack', 'Key Rack', 'gold', 'L', 0, 'uncommon', '🗝️', '+2 Keys. Lose 1 Step.', { onPlace: (c) => { c.gain('keys', 2); c.gain('steps', -1); } }),
@@ -170,8 +188,9 @@ export const ROOMS = {
     onPlace: (c) => { c.gain('coins', 4); c.gain('gems', 2); c.dread(4); },
   }),
   winecellar: R('winecellar', 'Wine Cellar', 'crimson', 'L', 0, 'uncommon', '🍷', '+3 Gems. Lose 2 Steps.', { onPlace: (c) => { c.gain('gems', 3); c.gain('steps', -2); } }),
-  gambling: R('gambling', 'Card Room', 'crimson', 'T', 0, 'uncommon', '🃏', 'Coin flip: +6 Coins, or lose 2 Steps.', {
+  gambling: R('gambling', 'Card Room', 'crimson', 'T', 0, 'uncommon', '🃏', 'Coin flip: +6 Coins or lose 2 Steps. Tap: flip again.', {
     onPlace: (c) => { if (c.rand() < 0.5) c.gain('coins', 6); else c.gain('steps', -2); },
+    tap: (c) => { if (c.rand() < 0.5) c.gain('coins', 4); else c.gain('steps', -1); },
   }),
   boarded: R('boarded', 'Boarded Room', 'crimson', 'X', 0, 'uncommon', '🪵', '+2 Gems. All its exits are locked.', { lockExits: true, onPlace: (c) => c.gain('gems', 2) }),
   sinkhole: R('sinkhole', 'Sinkhole', 'crimson', 'T', 0, 'uncommon', '🕳️', '+3 Steps. A random empty cell next to it collapses.', {
@@ -255,6 +274,47 @@ export const ROOMS = {
   cloister: R('cloister', 'Cloister', 'ivory', 'L', 1, 'rare', '⛪', 'Calm 6. +1 Key, +1 Gem.', {
     discover: true, calm: 6,
     onPlace: (c) => { c.gain('keys', 1); c.gain('gems', 1); },
+  }),
+
+  // Synergy: Wine Cellar + Cellar Door
+  cellardoor: R('cellardoor', 'Cellar Door', 'amber', 'D', 0, 'common', '🚪', '+1 Step. +3 Gems if Wine Cellar placed.', {
+    discover: true,
+    onPlace: (c) => { c.gain('steps', 1); if (c.s.cells.some((x) => x && x.id === 'winecellar')) c.gain('gems', 3); },
+  }),
+
+  // Synergy: Gallery + Studio
+  studio: R('studio', 'Studio', 'blue', 'D', 0, 'uncommon', '🎨', '+2 Coins. +1 Reroll if Gallery placed. Tap: +1 Coin.', {
+    discover: true,
+    onPlace: (c) => { c.gain('coins', 2); if (c.s.cells.some((x) => x && x.id === 'gallery')) c.gain('rerolls', 1); },
+    tap: (c) => c.gain('coins', 1),
+  }),
+
+  // Synergy: Furnace + Forge
+  forge: R('forge', 'Forge', 'crimson', 'L', 0, 'uncommon', '🔨', '+2 Keys. +2 Steps if Furnace placed. Tap: trade 2 Coins for 1 Key.', {
+    discover: true,
+    onPlace: (c) => { c.gain('keys', 2); if (c.s.cells.some((x) => x && x.id === 'furnace')) c.gain('steps', 2); },
+    tap: (c) => { if (c.s.res.coins >= 2) { c.gain('coins', -2); c.gain('keys', 1); } },
+  }),
+
+  // Synergy: Greenhouse + Apothecary
+  apothecary: R('apothecary', 'Apothecary', 'green', 'L', 0, 'uncommon', '🧪', '+2 Gems. +2 Steps if Greenhouse placed. Tap: trade 2 Gems for 2 Steps.', {
+    discover: true,
+    onPlace: (c) => { c.gain('gems', 2); if (c.s.cells.some((x) => x && x.id === 'greenhouse')) c.gain('steps', 2); },
+    tap: (c) => { if (c.s.res.gems >= 2) { c.gain('gems', -2); c.gain('steps', 2); } },
+  }),
+
+  // Synergy: Observatory + Telescope
+  telescope: R('telescope', 'Telescope Room', 'ivory', 'D', 1, 'rare', '🌙', '+1 Reroll. While Observatory stands, drafts cost 1 fewer Step.', {
+    discover: true,
+    onPlace: (c) => c.gain('rerolls', 1),
+    passive: { draftCost: (n, s) => s.cells.some((x) => x && x.id === 'observatory') ? Math.max(0, n - 1) : n },
+  }),
+
+  // Synergy: Bell Tower + Belfry
+  belfry: R('belfry', 'Belfry', 'violet', 'D', 0, 'uncommon', '🪶', '+2 Steps. +1 more per floor cleared. Tap: calm 3.', {
+    discover: true,
+    onPlace: (c) => c.gain('steps', 2 + c.s.nightsCleared),
+    tap: (c) => c.dread(-3),
   }),
 };
 

@@ -101,6 +101,7 @@ export function newRun({
     drafts: 0, placed: 0, reshuffles: 0, bonus: 0, nightsCleared: 0, score: 0, log: [], steward: '', result: null,
     discoveredThisRun: [], discoveryCells: {}, discoveryOffer: null,
     knownDiscoveries: [...discoveredRooms],
+    tapped: {},
   };
   s.pool = Object.keys(ROOMS).filter((id) => isDraftable(id) && (
     (!ROOMS[id].unlock && !ROOMS[id].discover) || unlockedRooms.includes(id) || discoveredRooms.includes(id)
@@ -259,6 +260,7 @@ function startNight(s, n, carry) {
   if (undiscovered.length > 0 && fl.discoveryCells) {
     for (const p of fl.discoveryCells) s.discoveryCells[key(p.r, p.c)] = true;
   }
+  s.tapped = {};
   s.between = false;
   s.phase = 'door';
   s.pending = null;
@@ -868,6 +870,21 @@ export function act(prev, a) {
         log(s, `Discovered ${ROOMS[id].name}!`);
       }
       s.discoveryOffer = null;
+      advance(s);
+      return s;
+    }
+    case 'tapRoom': {
+      if (s.phase !== 'door') throw new Error('Can only tap rooms while choosing a door');
+      const cell = cellAt(s, a.r, a.c);
+      if (!cell || !cell.id) throw new Error('No room there');
+      const room = ROOMS[cell.id];
+      if (!room.tap) throw new Error('This room has no tap ability');
+      const k = key(a.r, a.c);
+      if (s.tapped[k]) throw new Error('Already activated this night');
+      s.tapped[k] = true;
+      const ctx = makeCtx(s, a.r, a.c, room);
+      room.tap(ctx);
+      log(s, `Activated ${room.name}.`);
       advance(s);
       return s;
     }

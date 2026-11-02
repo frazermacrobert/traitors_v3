@@ -205,6 +205,10 @@ h3 { font-size: 15px; line-height: 1.15; }
 .cell.target.disc::after { content: "!"; color: #c99a1f; border-color: #c99a1f; background: rgba(246, 216, 97, .2); font: 400 calc(var(--cell) * .42)/1 var(--display); }
 .cell.pending::after { content: ""; position: absolute; inset: 7%; border: 2.5px solid var(--pencil); border-radius: 3px; animation: pencil 1s ease-in-out infinite; }
 .cell.ghost::after { display: none; }
+.cell.tappable { outline: 2.5px solid var(--mustard); outline-offset: -2px; cursor: pointer; position: relative; }
+.cell.tappable svg { filter: drop-shadow(0 0 4px rgba(246, 216, 97, .5)); }
+.tap-badge { position: absolute; bottom: 2px; right: 2px; background: var(--mustard); color: var(--ink); font: 700 8px var(--display); padding: 1px 4px; border-radius: 3px; line-height: 1.2; letter-spacing: .5px; z-index: 3; pointer-events: none; }
+.cell.tapped-done { opacity: .6; }
 .cell.ghost svg { opacity: .9; filter: drop-shadow(3px 3px 0 rgba(200, 50, 42, .6)); }
 .board.flash-dread { animation: shake .45s ease; }
 .board.flash-dread::after { content: ""; position: absolute; inset: -6px; pointer-events: none; animation: redwash .9s ease forwards; }
