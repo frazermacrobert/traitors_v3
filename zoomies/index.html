@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Zoomies!</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="header">
+    <h1>🐕 Zoomies!</h1>
+    <div class="subtitle">Help Velvet reach the beach!</div>
+  </div>
+
+  <div id="hud"></div>
+
+  <div class="board-container">
+    <div class="board-wrapper">
+      <div id="board-grid"></div>
+      <div class="board-label-row">
+        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls"></div>
+  <div id="game-log"></div>
+
+  <div class="new-game-link">
+    <button onclick="window.zoomiesNewGame()">Start fresh game</button>
+  </div>
+
+  <script type="module">
+    import './js/ui/app.js';
+    window.addEventListener('DOMContentLoaded', () => window.zoomiesInit());
+  </script>
+</body>
+</html>
