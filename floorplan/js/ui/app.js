@@ -3,7 +3,7 @@ import {
   newRun, act, openTargets, cellAt, gemCost, connectedSet, vaultConnected, roomDoors, drawCount, getMods, LOSS_TEXT,
   goalTarget, goalProgress, goalMet, goalText, generateFloor, NIGHTS, biggestWing, RES_NAMES, isVault,
 } from '../engine/engine.js';
-import { openReconstructCells, checkClue } from '../engine/reconstruct.js';
+import { checkClue } from '../engine/reconstruct.js';
 import { hashSeed } from '../engine/rng.js';
 import { OMENS, EVENTS, LANDINGS, WINGS, STEWARD_STORY } from '../data/nights.js';
 import { sfx, setSound, soundOn } from './sound.js';
@@ -372,71 +372,69 @@ function renderReconstruct() {
   const s = ui.run;
   const rc = s.reconstruct;
   const m = MANSIONS.find((x) => x.id === s.mansionId);
-  const allPlaced = !rc.tray.some((t) => t !== null);
   const remaining = rc.tray.filter((t) => t !== null).length;
+  const allPlaced = remaining === 0;
+  const isWrong = rc.phase === 'wrong';
 
-  // Render the reconstruction grid
+  // 3x3 evidence grid
   let gridHtml = '';
-  for (let r = 0; r < rc.h; r++) {
-    for (let c = 0; c < rc.w; c++) {
-      const cell = rc.grid[r * rc.w + c];
+  for (let r = 0; r < rc.size; r++) {
+    for (let c = 0; c < rc.size; c++) {
+      const cell = rc.grid[r * rc.size + c];
       const k = `${r},${c}`;
-      const isHighlight = ui.rHighlight && ui.rHighlight.r === r && ui.rHighlight.c === c;
-      if (cell && cell.blocked) {
-        gridHtml += '<div class="cell blocked"></div>';
-      } else if (cell && cell.fixed) {
-        gridHtml += `<div class="cell room vault">${roomSvg(cell.id, cell.doors, { label: cellSize >= 58 })}</div>`;
-      } else if (cell && cell.id) {
-        const isPlaced = rc.placed[k] !== undefined;
-        gridHtml += `<div class="cell room rc-placed ${isHighlight ? 'rc-hl' : ''}" data-a="rcCell" data-r="${r}" data-c="${c}" role="button">${roomSvg(cell.id, cell.doors, { label: cellSize >= 58 })}</div>`;
+      const hl = ui.rHighlight && ui.rHighlight.r === r && ui.rHighlight.c === c;
+      const wrong = isWrong && cell && rc.truth.find((t) => t.r === r && t.c === c)?.item.id !== cell.id;
+      if (cell) {
+        gridHtml += `<div class="ev-cell filled ${hl ? 'ev-hl' : ''} ${wrong ? 'ev-wrong' : ''}" data-a="rcCell" data-r="${r}" data-c="${c}" role="button">
+          <span class="ev-icon">${cell.icon}</span><span class="ev-name">${esc(cell.name)}</span></div>`;
       } else {
-        const canPlace = !cell;
-        gridHtml += `<div class="cell ${canPlace ? 'rc-open' : ''} ${isHighlight ? 'rc-hl' : ''}" data-a="rcCell" data-r="${r}" data-c="${c}" role="button"></div>`;
+        gridHtml += `<div class="ev-cell empty ${hl ? 'ev-hl' : ''}" data-a="rcCell" data-r="${r}" data-c="${c}" role="button">
+          <span class="ev-icon">?</span></div>`;
       }
     }
   }
 
-  // Clue panel
+  // Clue panel for highlighted cell
   let clueHtml = '';
-  if (ui.rHighlight && rc.revealed[`${ui.rHighlight.r},${ui.rHighlight.c}`]) {
-    const clues = rc.revealed[`${ui.rHighlight.r},${ui.rHighlight.c}`];
-    const cell = rc.grid[ui.rHighlight.r * rc.w + ui.rHighlight.c];
-    const roomName = cell?.id ? ROOMS[cell.id].name : 'Empty';
-    clueHtml = `<div class="rc-clues">
-      <div class="rc-clue-head">${cell?.id ? ROOMS[cell.id].icon : ''} ${esc(roomName)} clues:</div>
+  const hk = ui.rHighlight ? `${ui.rHighlight.r},${ui.rHighlight.c}` : null;
+  if (hk && rc.revealed[hk]) {
+    const clues = rc.revealed[hk];
+    const cell = rc.grid[ui.rHighlight.r * rc.size + ui.rHighlight.c];
+    clueHtml = `<div class="ev-clues">
       ${clues.map((cl) => {
-        const status = checkClue(rc, ui.rHighlight.r, ui.rHighlight.c, cl);
-        const icon = status === true ? '<span class="clue-ok">OK</span>' : status === false ? '<span class="clue-bad">X</span>' : '<span class="clue-unk">?</span>';
-        return `<div class="rc-clue">${icon} ${esc(cl.text)}</div>`;
+        const st = checkClue(rc, ui.rHighlight.r, ui.rHighlight.c, cl);
+        const mark = st === true ? '&#10003;' : st === false ? '&#10007;' : '?';
+        const cls = st === true ? 'clue-ok' : st === false ? 'clue-bad' : 'clue-unk';
+        return `<div class="ev-clue"><span class="${cls}">${mark}</span> ${esc(cl.text)}</div>`;
       }).join('')}
     </div>`;
   }
 
-  // Tray
+  // Evidence tray
   const trayItems = rc.tray.map((t, i) => {
     if (!t) return '';
     const sel = ui.rSelected === i;
-    const fam = FAMILIES[ROOMS[t.id].family];
-    return `<button class="rc-tray-item ${sel ? 'selected' : ''}" data-a="rcTray" data-i="${i}" style="--fam:${fam.color}">
-      <span class="rc-ti-svg">${roomSvg(t.id, t.doors, { label: false })}</span>
-      <span class="rc-ti-name">${esc(ROOMS[t.id].name)}</span>
-    </button>`;
+    return `<button class="ev-item ${sel ? 'selected' : ''}" data-a="rcTray" data-i="${i}">
+      <span class="ev-item-icon">${t.icon}</span><span class="ev-item-name">${esc(t.name)}</span></button>`;
   }).filter(Boolean).join('');
 
+  const wrongMsg = isWrong ? `<div class="ev-wrong-msg">${rc.correct}/${rc.total} correct. Wrong placements are marked red.</div>` : '';
+
   return `<div class="run rc-run">
-    <div class="run-bar rc-bar">
+    <div class="rc-header">
       <button class="menu-btn" data-a="menu" aria-label="Menu">${icon('menu')}</button>
-      <span class="grow" style="font-weight:700;font-size:14px">Reconstruct the Crime Scene</span>
-      <span class="chip">${rc.total - remaining}/${rc.total} placed</span>
+      <div class="rc-title"><b>${esc(m.caseName)}</b><span class="muted">Place the evidence</span></div>
+      <button class="btn small ghost" data-a="rSkip">Skip</button>
     </div>
-    <div class="board-wrap"><div class="sheet"><div class="board rc-board" style="--cols:${rc.w}">${gridHtml}</div>
-      <div class="titleblock"><span>Crime Scene &middot; ${esc(m.caseName)}</span><span>reconstruct</span></div></div></div>
+    <div class="ev-grid-wrap">
+      <div class="ev-grid" style="--sz:${rc.size}">${gridHtml}</div>
+    </div>
     ${clueHtml}
-    <div class="tray rc-tray">
-      ${stewardHtml(s)}
-      <div class="rc-tray-scroll">${trayItems || '<div class="hint">All rooms placed.</div>'}</div>
-      <div class="rc-actions">
-        ${allPlaced ? '<button class="btn primary" data-a="rcSubmit">Submit reconstruction</button>' : `<div class="hint">${remaining} room${remaining !== 1 ? 's' : ''} left. Tap a room, then tap where it goes.</div>`}
+    ${wrongMsg}
+    <div class="ev-tray">
+      <div class="ev-tray-scroll">${trayItems || (isWrong ? '' : '<div class="ev-hint">All placed. Check the clues, then submit.</div>')}</div>
+      <div class="ev-actions">
+        ${isWrong ? '<button class="btn primary" data-a="rcRetry">Try again</button>' : allPlaced ? '<button class="btn primary" data-a="rcSubmit">Submit</button>' : `<div class="ev-hint">${remaining} left</div>`}
       </div>
     </div>
   </div>`;
@@ -747,7 +745,7 @@ window.addEventListener('resize', () => { if (ui.screen === 'run') sizeBoard(); 
 // ---------- input ----------
 const PHASE_FOR = { select: 'door', pick: 'card', closet: 'card', reroll: 'card', unpick: 'place', rot: 'place', place: 'place',
   buyItem: 'shop', leave: 'shop', heir: 'heirloom', choose: 'event', land: 'landing', discPick: 'discovery',
-  rcTray: 'reconstruct', rcCell: 'reconstruct', rcSubmit: 'reconstruct' };
+  rcTray: 'reconstruct', rcCell: 'reconstruct', rcSubmit: 'reconstruct', rcRetry: 'reconstruct', rSkip: 'reconstruct' };
 let lastRunTap = 0;
 function handle(el, e) {
   const a = el.dataset.a;
@@ -831,12 +829,9 @@ function handle(el, e) {
       const rc = s?.reconstruct;
       if (!rc || rc.phase !== 'placing') break;
       const k = `${r},${c}`;
-      const cell = rc.grid[r * rc.w + c];
-      if (cell && (cell.fixed || cell.blocked)) break;
+      const cell = rc.grid[r * rc.size + c];
       if (typeof ui.rSelected === 'number') {
-        // Place from tray
-        if (cell && cell.id && rc.placed[k] !== undefined) {
-          // Swap: return existing to tray, place new one
+        if (cell && rc.placed[k] !== undefined) {
           doAct({ type: 'rRemove', r, c });
           if (ui.run.reconstruct.tray[ui.rSelected]) {
             doAct({ type: 'rPlace', trayIndex: ui.rSelected, r, c });
@@ -846,9 +841,8 @@ function handle(el, e) {
         }
         ui.rSelected = null;
         ui.rHighlight = { r, c };
-      } else if (cell && cell.id && rc.placed[k] !== undefined) {
+      } else if (cell && rc.placed[k] !== undefined) {
         if (ui.rHighlight && ui.rHighlight.r === r && ui.rHighlight.c === c) {
-          // Tap highlighted placed room again: pick it up back to tray
           const trayIdx = rc.placed[k];
           doAct({ type: 'rRemove', r, c });
           ui.rSelected = trayIdx;
@@ -863,9 +857,23 @@ function handle(el, e) {
     }
     case 'rcSubmit': {
       if (!s?.reconstruct || s.reconstruct.tray.some((t) => t !== null)) {
-        toast('Place all rooms first', true); break;
+        toast('Place all evidence first', true); break;
       }
       doAct({ type: 'rSubmit' });
+      ui.rSelected = null;
+      ui.rHighlight = null;
+      break;
+    }
+    case 'rcRetry': {
+      doAct({ type: 'rRetry' });
+      ui.rSelected = null;
+      ui.rHighlight = null;
+      break;
+    }
+    case 'rSkip': {
+      doAct({ type: 'rSkip' });
+      ui.rSelected = null;
+      ui.rHighlight = null;
       return;
     }
     case 'info': if (s) ui.overlay = roomInfo(el.dataset.id); break;

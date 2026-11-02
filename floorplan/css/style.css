@@ -321,28 +321,37 @@ h3 { font-size: 15px; line-height: 1.15; }
 .kr-body small { font: 700 10px var(--body); text-transform: uppercase; letter-spacing: .8px; color: var(--ink-soft); }
 .kr-body span { font-size: 12.5px; color: var(--ink); line-height: 1.25; }
 
-/* ---------- Reconstruction puzzle ---------- */
+/* ---------- Reconstruction / Evidence puzzle ---------- */
 .rc-run { display: flex; flex-direction: column; height: 100%; }
-.rc-bar { flex: none; }
-.rc-board .cell.rc-open { background: rgba(111, 159, 224, .12); cursor: pointer; }
-.rc-board .cell.rc-placed { cursor: pointer; outline: 2.5px solid transparent; transition: outline-color .15s; }
-.rc-board .cell.rc-placed:active { opacity: .8; }
-.rc-board .cell.rc-hl { outline: 3px solid var(--gold) !important; z-index: 2; }
-.rc-clues { padding: 8px 16px; background: var(--paper); border-top: 2px solid var(--ink); flex: none; }
-.rc-clue-head { font: 400 13px var(--display); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
-.rc-clue { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+.rc-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; flex: none; }
+.rc-title { flex: 1; text-align: center; color: var(--on-wall); }
+.rc-title b { display: block; font: 400 15px var(--display); text-transform: uppercase; letter-spacing: .5px; }
+.rc-title .muted { font-size: 12px; opacity: .7; }
+.ev-grid-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px 16px; }
+.ev-grid { display: grid; grid-template-columns: repeat(var(--sz), 1fr); gap: 6px; width: 100%; max-width: 300px; aspect-ratio: 1; }
+.ev-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 2.5px solid var(--ink); border-radius: 6px; cursor: pointer; transition: transform .1s, box-shadow .1s; background: var(--card); box-shadow: 3px 3px 0 var(--shadow); }
+.ev-cell.empty { background: rgba(159, 183, 164, .25); border-style: dashed; box-shadow: none; }
+.ev-cell.ev-hl { outline: 3px solid var(--mustard); outline-offset: -1px; z-index: 2; }
+.ev-cell.ev-wrong { background: #f5ddd8; border-color: var(--pencil); }
+.ev-cell:active { transform: translate(2px, 2px); box-shadow: none; }
+.ev-icon { font-size: 28px; line-height: 1; }
+.ev-name { font: 400 9px var(--display); text-transform: uppercase; letter-spacing: .3px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
+.ev-clues { flex: none; padding: 8px 16px; background: var(--card); border-top: 2px solid var(--ink); }
+.ev-clue { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
 .clue-ok { color: #4a9; font-weight: 700; width: 20px; text-align: center; }
 .clue-bad { color: #c44; font-weight: 700; width: 20px; text-align: center; }
 .clue-unk { color: #999; font-weight: 700; width: 20px; text-align: center; }
-.rc-tray { flex: none; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 2px solid var(--ink); background: var(--paper); }
-.rc-tray-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-.rc-tray-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 8px; border: 2.5px solid var(--ink); background: #fff; cursor: pointer; flex: none; min-width: 64px; box-shadow: 2px 2px 0 var(--ink); font: inherit; color: inherit; }
-.rc-tray-item.selected { background: var(--gold); box-shadow: none; transform: translate(2px, 2px); }
-.rc-tray-item:active { transform: translate(2px, 2px); box-shadow: none; }
-.rc-ti-svg { width: 36px; height: 36px; position: relative; }
-.rc-ti-name { font: 400 10px var(--display); text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
-.rc-actions { display: flex; gap: 8px; }
-.rc-actions .btn { flex: 1; }
+.ev-wrong-msg { text-align: center; padding: 8px 16px; color: var(--pencil); font-weight: 700; font-size: 14px; }
+.ev-tray { flex: none; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 2px solid var(--ink); background: var(--card); }
+.ev-tray-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.ev-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px; border: 2.5px solid var(--ink); background: #fff; cursor: pointer; flex: none; min-width: 60px; box-shadow: 2px 2px 0 var(--ink); font: inherit; color: inherit; border-radius: 4px; }
+.ev-item.selected { background: var(--mustard); box-shadow: none; transform: translate(2px, 2px); }
+.ev-item:active { transform: translate(2px, 2px); box-shadow: none; }
+.ev-item-icon { font-size: 22px; line-height: 1; }
+.ev-item-name { font: 400 9px var(--display); text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+.ev-actions { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.ev-actions .btn { flex: none; min-width: 120px; }
+.ev-hint { font-size: 13px; color: var(--ink-soft); text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

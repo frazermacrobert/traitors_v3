@@ -516,11 +516,24 @@ function houseActs(s) {
       const rooms = [];
       s.cells.forEach((cell, i) => { if (cell && cell.id && !LANDMARKS.includes(cell.id) && ROOMS[cell.id].shape !== 'X') rooms.push(i); });
       if (!rooms.length) { did = false; break; }
-      const i = pick(s, rooms);
-      const cell = s.cells[i];
-      cell.rot = (cell.rot + 1) % 4;
-      cell.doors = roomDoors(cell.id, cell.rot);
-      s.lastShift = i;
+      const sizeBefore = connectedSet(s).size;
+      const candidates = shuffle(s, rooms);
+      let shifted = false;
+      for (const ci of candidates) {
+        const cell = s.cells[ci];
+        const oldRot = cell.rot;
+        const oldDoors = [...cell.doors];
+        cell.rot = (cell.rot + 1) % 4;
+        cell.doors = roomDoors(cell.id, cell.rot);
+        if (connectedSet(s).size >= sizeBefore - 1) {
+          s.lastShift = ci;
+          shifted = true;
+          break;
+        }
+        cell.rot = oldRot;
+        cell.doors = oldDoors;
+      }
+      if (!shifted) did = false;
       break;
     }
     default: break;
@@ -862,7 +875,7 @@ export function act(prev, a) {
       finish(s, false, 'abandon');
       return s;
     }
-    case 'rPlace': case 'rRemove': case 'rSwap': {
+    case 'rPlace': case 'rRemove': {
       if (s.phase !== 'reconstruct' || !s.reconstruct) throw new Error('Not in reconstruction');
       s.reconstruct = reconstructAct(s.reconstruct, a);
       return s;
@@ -870,15 +883,26 @@ export function act(prev, a) {
     case 'rSubmit': {
       if (s.phase !== 'reconstruct' || !s.reconstruct) throw new Error('Not in reconstruction');
       s.reconstruct = reconstructAct(s.reconstruct, a);
-      if (s.reconstruct.phase === 'scored') {
-        s.score += s.reconstruct.score;
-        const bonus = s.reconstruct.correct === s.reconstruct.total ? 50 : 0;
-        s.score += bonus;
+      if (s.reconstruct.phase === 'solved') {
+        s.score += 50;
         finish(s, true, 'vault');
-        s.result.reconstructScore = s.reconstruct.score;
-        s.result.reconstructCorrect = s.reconstruct.correct;
+        s.result.reconstructScore = 100;
+        s.result.reconstructCorrect = s.reconstruct.total;
         s.result.reconstructTotal = s.reconstruct.total;
       }
+      return s;
+    }
+    case 'rRetry': {
+      if (s.phase !== 'reconstruct' || !s.reconstruct) throw new Error('Not in reconstruction');
+      s.reconstruct = reconstructAct(s.reconstruct, a);
+      return s;
+    }
+    case 'rSkip': {
+      if (s.phase !== 'reconstruct' || !s.reconstruct) throw new Error('Not in reconstruction');
+      finish(s, true, 'vault');
+      s.result.reconstructScore = 0;
+      s.result.reconstructCorrect = 0;
+      s.result.reconstructTotal = s.reconstruct.total;
       return s;
     }
     default:

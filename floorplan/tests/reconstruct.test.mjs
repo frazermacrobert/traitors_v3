@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { newRun, act } from '../js/engine/engine.js';
-import { initReconstruct, reconstructAct, openReconstructCells, checkClue } from '../js/engine/reconstruct.js';
+import { initReconstruct, reconstructAct, checkClue } from '../js/engine/reconstruct.js';
 import { runOptions } from '../js/engine/meta.js';
 import { playOut } from '../tools/bot.mjs';
 
@@ -25,70 +25,62 @@ describe('reconstruction puzzle', () => {
     return null;
   }
 
-  it('initReconstruct creates a valid puzzle state', () => {
+  it('initReconstruct creates a valid 3x3 evidence puzzle', () => {
     const run = winStoryRun();
     if (!run) { console.log('  (skipped: no bot win in 20 attempts)'); return; }
     assert.equal(run.phase, 'reconstruct');
     const rc = run.reconstruct;
     assert.ok(rc);
-    assert.ok(rc.tray.length > 0);
-    assert.ok(rc.truth.length > 0);
-    assert.equal(rc.tray.filter(Boolean).length, rc.truth.length);
+    assert.equal(rc.size, 3);
+    assert.equal(rc.grid.length, 9);
+    assert.equal(rc.truth.length, 9);
+    assert.equal(rc.tray.filter(Boolean).length, 9);
     assert.equal(rc.phase, 'placing');
+    for (const t of rc.truth) {
+      assert.ok(t.item);
+      assert.ok(t.item.id);
+      assert.ok(t.item.icon);
+    }
   });
 
-  it('rPlace puts a room on the grid and reveals clues', () => {
+  it('rPlace puts evidence on the grid and reveals clues', () => {
     const run = winStoryRun();
     if (!run) { console.log('  (skipped: no bot win in 20 attempts)'); return; }
     const rc = run.reconstruct;
-    const openCells = openReconstructCells(rc);
-    const empty = openCells.find((c) => !c.occupied);
-    assert.ok(empty, 'should have an empty cell');
     const trayIdx = rc.tray.findIndex((t) => t !== null);
-    const rc2 = reconstructAct(rc, { type: 'rPlace', trayIndex: trayIdx, r: empty.r, c: empty.c });
+    const rc2 = reconstructAct(rc, { type: 'rPlace', trayIndex: trayIdx, r: 0, c: 0 });
     assert.equal(rc2.tray[trayIdx], null);
-    assert.ok(rc2.grid[empty.r * rc2.w + empty.c]);
+    assert.ok(rc2.grid[0]);
     assert.equal(rc2.moves, 1);
+    assert.ok(rc2.revealed['0,0']);
   });
 
-  it('rRemove returns room to tray', () => {
+  it('rRemove returns evidence to tray', () => {
     const run = winStoryRun();
     if (!run) { console.log('  (skipped: no bot win in 20 attempts)'); return; }
     const rc = run.reconstruct;
-    const openCells = openReconstructCells(rc);
-    const empty = openCells.find((c) => !c.occupied);
     const trayIdx = rc.tray.findIndex((t) => t !== null);
-    const placed = reconstructAct(rc, { type: 'rPlace', trayIndex: trayIdx, r: empty.r, c: empty.c });
-    const removed = reconstructAct(placed, { type: 'rRemove', r: empty.r, c: empty.c });
+    const placed = reconstructAct(rc, { type: 'rPlace', trayIndex: trayIdx, r: 0, c: 0 });
+    const removed = reconstructAct(placed, { type: 'rRemove', r: 0, c: 0 });
     assert.ok(removed.tray[trayIdx] !== null);
-    assert.equal(removed.grid[empty.r * removed.w + empty.c], null);
+    assert.equal(removed.grid[0], null);
   });
 
-  it('rSubmit scores the reconstruction', () => {
+  it('rSubmit requires all correct for solved, returns wrong otherwise', () => {
     const run = winStoryRun();
     if (!run) { console.log('  (skipped: no bot win in 20 attempts)'); return; }
     let rc = run.reconstruct;
-    // Place all rooms in their true positions for a perfect score
+    // Place all evidence in correct positions
     for (const t of rc.truth) {
-      const trayIdx = rc.tray.findIndex((item) => item !== null && item.id === t.id);
+      const trayIdx = rc.tray.findIndex((item) => item !== null && item.id === t.item.id);
       if (trayIdx >= 0) {
         rc = reconstructAct(rc, { type: 'rPlace', trayIndex: trayIdx, r: t.r, c: t.c });
       }
     }
-    // If duplicates exist, place remaining anywhere
-    const remaining = rc.tray.map((t, i) => t ? i : -1).filter((i) => i >= 0);
-    const emptyCells = openReconstructCells(rc).filter((c) => !c.occupied);
-    for (let i = 0; i < remaining.length && i < emptyCells.length; i++) {
-      rc = reconstructAct(rc, { type: 'rPlace', trayIndex: remaining[i], r: emptyCells[i].r, c: emptyCells[i].c });
-    }
-    if (rc.tray.some((t) => t !== null)) {
-      console.log('  (skipped: could not place all rooms)');
-      return;
-    }
+    assert.ok(!rc.tray.some((t) => t !== null), 'all placed');
     const scored = reconstructAct(rc, { type: 'rSubmit' });
-    assert.equal(scored.phase, 'scored');
-    assert.ok(scored.correct >= 0);
-    assert.ok(scored.score >= 0);
-    assert.ok(scored.truthGrid);
+    assert.equal(scored.phase, 'solved');
+    assert.equal(scored.correct, 9);
+    assert.equal(scored.score, 100);
   });
 });
