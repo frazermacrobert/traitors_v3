@@ -223,6 +223,37 @@ export const ROOMS = {
   mirrors: R('mirrors', 'Hall of Mirrors', 'ivory', 'X', 3, 'legendary', '🪩', 'Repeats the effect of every connected neighbour.', {
     echo: true, unlock: true, onPlace: (c) => c.echo(4),
   }),
+
+  // ---- Discovery rooms: found via "!" cells on the map ----
+  kitchen: R('kitchen', 'Kitchen', 'violet', 'I', 0, 'common', '🍳', '+2 Steps. Pantries you place later give +2 more.', {
+    discover: true,
+    onPlace: (c) => c.gain('steps', 2),
+    passive: { onPlace: (c) => { if (c.room.id === 'pantry') c.gain('steps', 2); } },
+  }),
+  dining: R('dining', 'Dining Hall', 'violet', 'L', 1, 'uncommon', '🍽️', '+1 Step. +3 more if Kitchen is on this floor.', {
+    discover: true,
+    onPlace: (c) => { c.gain('steps', 1); if (c.s.cells.some((x) => x && x.id === 'kitchen')) c.gain('steps', 3); },
+  }),
+  pantry: R('pantry', 'Pantry', 'green', 'D', 0, 'common', '🫙', '+1 Gem. +2 Coins if Kitchen placed. Dead end.', {
+    discover: true,
+    onPlace: (c) => { c.gain('gems', 1); if (c.s.cells.some((x) => x && x.id === 'kitchen')) c.gain('coins', 2); },
+  }),
+  armory: R('armory', 'Armory', 'gold', 'T', 1, 'uncommon', '⚔️', '+1 Key. Unlocks adjacent locked doorways.', {
+    discover: true,
+    onPlace: (c) => { c.gain('keys', 1); c.unlockAround(); },
+  }),
+  gatehouse: R('gatehouse', 'Gatehouse', 'gold', 'I', 0, 'common', '🏰', '+1 Key. +1 more if 2+ doorways are locked.', {
+    discover: true,
+    onPlace: (c) => { c.gain('keys', 1); if (Object.keys(c.s.lockedCells).length >= 2) c.gain('keys', 1); },
+  }),
+  maproom: R('maproom', 'Map Room', 'blue', 'L', 0, 'uncommon', '🗺️', '+1 Reroll. If Study placed, +1 card for 2 drafts.', {
+    discover: true,
+    onPlace: (c) => { c.gain('rerolls', 1); if (c.s.cells.some((x) => x && x.id === 'study')) c.buff('extraDraw', 2); },
+  }),
+  cloister: R('cloister', 'Cloister', 'ivory', 'L', 1, 'rare', '⛪', 'Calm 6. +1 Key, +1 Gem.', {
+    discover: true, calm: 6,
+    onPlace: (c) => { c.gain('keys', 1); c.gain('gems', 1); },
+  }),
 };
 
 export const isDraftable = (id) => !['entrance', 'vault', 'stair', 'closet', 'rubble'].includes(id);

@@ -80,7 +80,7 @@ function mk(id, rot, preset = false) { return { id, rot, doors: roomDoors(id, ro
 // ---------- setup ----------
 export function newRun({
   seed = Date.now(), mansionId = 'm1', deed = 0, deckId = 'standard', unlockedRooms = [], perks = [],
-  upgrades = {}, extraCards = [], startHeirloom = null,
+  upgrades = {}, extraCards = [], startHeirloom = null, discoveredRooms = [],
 } = {}) {
   const m = mansionById(mansionId);
   if (!m) throw new Error(`Unknown mansion ${mansionId}`);
@@ -93,8 +93,12 @@ export function newRun({
     dread: 0, dreadNext: 0, wings: {}, stepBonus: 0, carryBonus: 0, calmBonus: 0,
     phase: 'door', pending: null, queue: [], shop: null, heirloomOffer: null, event: null, landing: null, between: false,
     drafts: 0, placed: 0, reshuffles: 0, bonus: 0, nightsCleared: 0, score: 0, log: [], steward: '', result: null,
+    discoveredThisRun: [], discoveryCells: {}, discoveryOffer: null,
+    knownDiscoveries: [...discoveredRooms],
   };
-  s.pool = Object.keys(ROOMS).filter((id) => isDraftable(id) && (!ROOMS[id].unlock || unlockedRooms.includes(id)));
+  s.pool = Object.keys(ROOMS).filter((id) => isDraftable(id) && (
+    (!ROOMS[id].unlock && !ROOMS[id].discover) || unlockedRooms.includes(id) || discoveredRooms.includes(id)
+  ));
   s.deck = [...DECKS[deckId].cards, ...unlockedRooms, ...extraCards.filter((id) => ROOMS[id])];
   for (let i = 0; i < (DECKS[deckId].fill ?? 18); i++) s.deck.push(randomRoom(s));
   for (const mod of [DECKS[deckId], ...DEEDS.slice(1, deed + 1)]) if (mod && mod.start) mod.start(s);
@@ -156,7 +160,20 @@ export function generateFloor(m, n, rng) {
       rest.splice(rest.indexOf(p), 1);
       locked.push(p);
     }
-    return { entrance, goal, blocks, mystery, locked, rng: g.rng };
+    // Discovery cells: in hard-to-reach corners/edges, rewarding exploration
+    const discoveryCells = [];
+    const nDisc = m.discoveries?.[n - 1] || 0;
+    if (nDisc > 0 && rest.length) {
+      const edge = rest.filter((p) => (p.r <= 1 || p.r >= h - 2 || p.c === 0 || p.c === w - 1)
+        && Math.abs(p.r - entrance.r) + Math.abs(p.c - entrance.c) > 2);
+      const dpool = edge.length >= nDisc ? edge : rest;
+      for (let i = 0; i < nDisc && dpool.length; i++) {
+        const p = dpool.splice(ri(dpool.length), 1)[0];
+        rest.splice(rest.indexOf(p), 1);
+        discoveryCells.push(p);
+      }
+    }
+    return { entrance, goal, blocks, mystery, locked, discoveryCells, rng: g.rng };
   }
   throw new Error('Could not generate a floor');
 }
@@ -201,6 +218,12 @@ function startNight(s, n, carry) {
     log(s, 'Keys are prized tonight. Extra Strongrooms shuffled in.');
   }
   if (omen.nightStart) omen.nightStart(s);
+  // Discovery cells: place them only if undiscovered rooms remain
+  s.discoveryCells = {};
+  const undiscovered = Object.keys(ROOMS).filter((id) => ROOMS[id].discover && !s.knownDiscoveries.includes(id) && !s.discoveredThisRun.includes(id));
+  if (undiscovered.length > 0 && fl.discoveryCells) {
+    for (const p of fl.discoveryCells) s.discoveryCells[key(p.r, p.c)] = true;
+  }
   s.between = false;
   s.phase = 'door';
   s.pending = null;
@@ -249,6 +272,7 @@ export function openTargets(s) {
   for (const t of out) {
     t.locked = !!s.lockedCells[key(t.r, t.c)] || t.from.every((f) => f.locked);
     t.mystery = !!s.mystery[key(t.r, t.c)];
+    t.disc = !!s.discoveryCells[key(t.r, t.c)];
   }
   return out;
 }
@@ -494,6 +518,10 @@ function advance(s) {
       s.phase = 'event';
       return;
     }
+    if (q === 'discovery') {
+      const offer = discoveryOffer(s);
+      if (offer.length) { s.discoveryOffer = offer; s.phase = 'discovery'; return; }
+    }
   }
   if (s.between) { startNight(s, s.night + 1, s.carry || 0); return; }
   if (isWon(s)) { clearNight(s); return; }
@@ -697,6 +725,8 @@ export function act(prev, a) {
       }
       // Mystery
       if (s.mystery[key(p.r, p.c)]) { delete s.mystery[key(p.r, p.c)]; s.queue.unshift('event'); say(s, 'mystery'); }
+      // Discovery
+      if (s.discoveryCells[key(p.r, p.c)]) { delete s.discoveryCells[key(p.r, p.c)]; s.queue.unshift('discovery'); }
       // Dread
       const sprawl = openTargets(s).length >= 6 ? 1 : 0;
       s.dread += Math.max(0, modValue(s, 'dreadPerDraft', 1)) + sprawl;
@@ -764,6 +794,21 @@ export function act(prev, a) {
       advance(s);
       return s;
     }
+    case 'discover': {
+      if (s.phase !== 'discovery') throw new Error('No discovery offer');
+      if (a.index >= 0) {
+        const id = s.discoveryOffer[a.index];
+        if (!id) throw new Error('Bad discovery');
+        s.discoveredThisRun.push(id);
+        s.knownDiscoveries.push(id);
+        s.discard.push(id);
+        s.pool.push(id);
+        log(s, `Discovered ${ROOMS[id].name}!`);
+      }
+      s.discoveryOffer = null;
+      advance(s);
+      return s;
+    }
     case 'abandon': {
       finish(s, false, 'abandon');
       return s;
@@ -771,6 +816,11 @@ export function act(prev, a) {
     default:
       throw new Error(`Unknown action ${a.type}`);
   }
+}
+
+function discoveryOffer(s) {
+  const available = Object.keys(ROOMS).filter((id) => ROOMS[id].discover && !s.knownDiscoveries.includes(id) && !s.discoveredThisRun.includes(id));
+  return shuffle(s, available).slice(0, 3);
 }
 
 export function bestRotation(s, id, target, rots) {

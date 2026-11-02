@@ -80,6 +80,7 @@ function doAct(action) {
   ui.flash = null;
   if ((s.lastAct?.n || 0) > (before.lastAct?.n || 0)) { ui.flash = 'dread'; sfx('dread'); buzz([40, 30, 60]); }
   else if ((s.lastWing?.n || 0) > (before.lastWing?.n || 0)) { ui.flash = 'wing'; sfx('wing'); }
+  else if (s.phase === 'discovery' && before.phase !== 'discovery') { ui.flash = 'wing'; sfx('wing'); }
   else if (s.phase === 'event' && before.phase !== 'event') sfx('mystery');
   else if (s.night > before.night || s.phase === 'landing') sfx('clear');
   else if (action.type === 'place') sfx('place');
@@ -240,9 +241,9 @@ function loadoutPanel() {
 }
 
 function renderArchive() {
-  const tabs = [['upgrades', 'Upgrades'], ['blueprints', `Blueprints · ${ui.meta.collection.length}`], ['unlocks', 'Unlocks']]
+  const tabs = [['upgrades', 'Upgrades'], ['blueprints', `Blueprints · ${ui.meta.collection.length}`], ['unlocks', 'Unlocks'], ['discoveries', `Discoveries · ${(ui.meta.discoveries || []).length}`]]
     .map(([k, l]) => `<button class="btn small ${ui.tab === k ? 'on' : ''}" data-a="tab" data-id="${k}">${l}</button>`).join('');
-  const body = ui.tab === 'upgrades' ? renderUpgrades() : ui.tab === 'blueprints' ? renderBlueprints() : renderUnlocks();
+  const body = ui.tab === 'upgrades' ? renderUpgrades() : ui.tab === 'blueprints' ? renderBlueprints() : ui.tab === 'discoveries' ? renderDiscoveries() : renderUnlocks();
   return `<section class="screen">
     <div class="topbar"><button class="icon-btn" data-a="go" data-to="title" aria-label="Back">←</button><h2>Archive</h2><span class="chip">${icon('ink')} ${ui.meta.ink} Ink</span></div>
     <div class="seg">${tabs}</div>
@@ -299,6 +300,18 @@ function renderUnlocks() {
   }).join('');
   return `<p class="muted" style="margin:0">Permanent. New rooms join the random pool; new Plans and perks apply to every run.</p>
     <div class="unlock-grid">${items}</div>`;
+}
+
+function renderDiscoveries() {
+  const disc = ui.meta.discoveries || [];
+  const allDisc = Object.keys(ROOMS).filter((id) => ROOMS[id].discover);
+  const cards = allDisc.map((id) => {
+    const found = disc.includes(id);
+    return `<div class="unlock">${found ? cardHtml(null, id, -1, { static: true }) : `<div class="card static r-common" style="--fam:#888;--deep:#555;opacity:.4;filter:grayscale(1)"><div class="card-in"><div class="art"><span class="emo">?</span></div><div class="body"><div class="nm">???</div><div class="meta">Undiscovered</div><div class="tx">Find the golden ! cells on the map.</div></div></div></div>`}
+    </div>`;
+  }).join('');
+  return `<p class="muted" style="margin:0">Rooms found via <b style="color:#c99a1f">!</b> cells on the map. Once discovered, they appear in your deck and the random pool permanently. <b>${disc.length}/${allDisc.length}</b> found.</p>
+    <div class="unlock-grid">${cards}</div>`;
 }
 
 function renderRun() {
@@ -365,10 +378,11 @@ function renderBoard(s) {
       }
       const t = tmap.get(k);
       if (t) {
-        html += `<div class="cell target ${t.locked ? 'locked' : ''} ${t.mystery ? 'mystery' : ''}" data-a="select" data-r="${r}" data-c="${c}" role="button" aria-label="Draft into row ${r + 1}, column ${c + 1}"></div>`;
+        html += `<div class="cell target ${t.locked ? 'locked' : ''} ${t.mystery ? 'mystery' : ''} ${t.disc ? 'disc' : ''}" data-a="select" data-r="${r}" data-c="${c}" role="button" aria-label="Draft into row ${r + 1}, column ${c + 1}"></div>`;
         continue;
       }
-      html += s.mystery[k] ? '<div class="cell myst" aria-label="Mystery"></div>' : '<div class="cell"></div>';
+      const isDisc = s.discoveryCells && s.discoveryCells[k];
+      html += s.mystery[k] ? '<div class="cell myst" aria-label="Mystery"></div>' : isDisc ? '<div class="cell disc" aria-label="Discovery"></div>' : '<div class="cell"></div>';
     }
   }
   html += ui.popups.map((pp) => `<div class="pop ${pp.neg ? 'neg' : ''}" style="left:calc(${pp.c + 0.5} * var(--cell));top:calc(${pp.r + 0.5} * var(--cell) - ${pp.i * 22}px);animation-delay:${pp.i * 0.12}s">${pp.text}</div>`).join('');
@@ -449,6 +463,19 @@ function renderTray(s) {
       return `<div class="tray-head"><h3>🌙 Night ${s.night} cleared</h3></div>
         <div class="cards">${opts}</div>
         <div class="hint" style="font-size:12px">Carry ${Math.floor(s.res.steps / 2)} Steps + your deck up to Night ${s.night + 1}.</div>`;
+    }
+    case 'discovery': {
+      const cards = s.discoveryOffer.map((id, i) => cardHtml(null, id, i, { static: true }).replace('class="card ', `class="card " data-a="discPick" data-i="${i}" role="button" tabindex="0" style="cursor:pointer" `)).join('');
+      return `<div class="tray-head"><h3>Discovery!</h3><button class="btn small ghost" data-a="discPick" data-i="-1">Skip</button></div>
+        <div class="cards">${s.discoveryOffer.map((id, i) => {
+          const r = ROOMS[id]; const fam = FAMILIES[r.family];
+          return `<div class="card r-${r.rarity} static" style="--fam:${fam.color};--deep:${fam.deep}" data-a="discPick" data-i="${i}" role="button" tabindex="0">
+            <div class="card-in">
+              <div class="art"><div class="tile">${roomSvg(id, roomDoors(id, 0), { label: false })}</div>${shapeSvg(roomDoors(id, 0))}</div>
+              <div class="body"><div class="nm">${esc(r.name)}</div><div class="meta">${esc(fam.name)}</div><div class="tx">${esc(r.text)}</div></div>
+            </div></div>`;
+        }).join('')}</div>
+        <div class="hint" style="font-size:12px">Pick a new room to add to your collection permanently. It joins your deck this run.</div>`;
     }
     case 'heirloom': {
       const cards = s.heirloomOffer.map((h, i) => `<div class="card heir" data-a="heir" data-i="${i}" role="button" tabindex="0"><div class="card-in">
@@ -617,7 +644,7 @@ window.addEventListener('resize', () => { if (ui.screen === 'run') sizeBoard(); 
 
 // ---------- input ----------
 const PHASE_FOR = { select: 'door', pick: 'card', closet: 'card', reroll: 'card', unpick: 'place', rot: 'place', place: 'place',
-  buyItem: 'shop', leave: 'shop', heir: 'heirloom', choose: 'event', land: 'landing' };
+  buyItem: 'shop', leave: 'shop', heir: 'heirloom', choose: 'event', land: 'landing', discPick: 'discovery' };
 let lastRunTap = 0;
 function handle(el, e) {
   const a = el.dataset.a;
@@ -687,6 +714,7 @@ function handle(el, e) {
     case 'place': return doAct({ type: 'place' });
     case 'buyItem': return doAct({ type: 'buy', index: Number(el.dataset.i) });
     case 'leave': return doAct({ type: 'leave' });
+    case 'discPick': return doAct({ type: 'discover', index: Number(el.dataset.i) });
     case 'heir': return doAct({ type: 'heirloom', index: Number(el.dataset.i) });
     case 'info': if (s) ui.overlay = roomInfo(el.dataset.id); break;
     case 'showResult': ui.overlay = 'result'; break;

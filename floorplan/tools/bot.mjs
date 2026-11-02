@@ -112,6 +112,8 @@ export function botStep(s) {
     }
     case 'heirloom':
       return act(s, { type: 'heirloom', index: 0 });
+    case 'discovery':
+      return act(s, { type: 'discover', index: 0 });
     default:
       throw new Error(`bot: unexpected phase ${s.phase}`);
   }

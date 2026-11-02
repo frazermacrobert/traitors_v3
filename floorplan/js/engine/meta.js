@@ -7,7 +7,7 @@ import { UPGRADES, BASE_SLOTS, upgradeById } from '../data/progression.js';
 export function newMeta() {
   return {
     v: 2, ink: 0, totalInk: 0, runs: 0, wins: 0, owned: [], seenHelp: false,
-    upgrades: {}, collection: [], equipped: [], heirloomsFound: [], startHeirloom: null, pendingKeep: null,
+    upgrades: {}, collection: [], equipped: [], heirloomsFound: [], startHeirloom: null, pendingKeep: null, discoveries: [],
     mansions: Object.fromEntries(MANSIONS.map((m) => [m.id, { wins: 0, best: 0, maxDeed: 0, losses: 0 }])),
     last: { mansionId: 'm1', deed: 0, deckId: 'standard' },
   };
@@ -24,6 +24,7 @@ export function migrateMeta(meta) {
   if (meta.v !== 2) return base;
   const mansions = Object.fromEntries(Object.entries(base.mansions).map(([k, v]) => [k, { ...v, ...(meta.mansions || {})[k] }]));
   const m = { ...base, ...meta, mansions, last: { ...base.last, ...meta.last } };
+  if (!m.discoveries) m.discoveries = [];
   return m;
 }
 
@@ -47,6 +48,7 @@ export function runOptions(meta, { mansionId, deed, deckId, seed }) {
     upgrades: { ...meta.upgrades },
     extraCards: meta.equipped.slice(0, blueprintSlots(meta)),
     startHeirloom: hasFamilyChest(meta) && meta.heirloomsFound.includes(meta.startHeirloom) ? meta.startHeirloom : null,
+    discoveredRooms: meta.discoveries || [],
   };
 }
 
@@ -69,6 +71,7 @@ export function applyResult(prev, run) {
   meta.ink += r.ink;
   meta.totalInk += r.ink;
   for (const h of run.heirlooms || []) if (!meta.heirloomsFound.includes(h)) { meta.heirloomsFound.push(h); news.push('New heirloom recorded in your Archive'); }
+  for (const d of run.discoveredThisRun || []) if (!meta.discoveries.includes(d)) { meta.discoveries.push(d); news.push(`New room discovered: ${ROOMS[d]?.name || d}`); }
   const ms = meta.mansions[run.mansionId];
   if (r.won) {
     meta.wins++;

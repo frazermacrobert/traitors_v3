@@ -200,6 +200,9 @@ h3 { font-size: 15px; line-height: 1.15; }
 .cell.target.mystery::after { content: "?"; color: #5b3a8c; border-color: #5b3a8c; background: rgba(182, 147, 224, .25); }
 .cell.myst::after { content: "?"; position: absolute; inset: 26%; display: grid; place-items: center; font: 400 calc(var(--cell) * .34)/1 var(--hand); color: #5b3a8c; opacity: .65; }
 .cell.myst::before { display: none; }
+.cell.disc::after { content: "!"; position: absolute; inset: 26%; display: grid; place-items: center; font: 400 calc(var(--cell) * .38)/1 var(--display); color: #c99a1f; opacity: .75; }
+.cell.disc::before { display: none; }
+.cell.target.disc::after { content: "!"; color: #c99a1f; border-color: #c99a1f; background: rgba(246, 216, 97, .2); font: 400 calc(var(--cell) * .42)/1 var(--display); }
 .cell.pending::after { content: ""; position: absolute; inset: 7%; border: 2.5px solid var(--pencil); border-radius: 3px; animation: pencil 1s ease-in-out infinite; }
 .cell.ghost::after { display: none; }
 .cell.ghost svg { opacity: .9; filter: drop-shadow(3px 3px 0 rgba(200, 50, 42, .6)); }
