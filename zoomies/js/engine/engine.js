@@ -3,26 +3,17 @@ import { SHAPES, rotateDoors, buildDeck } from '../data/cards.js';
 
 const GRID = 6;
 const CORNERS = [[0,0],[0,5],[5,0],[5,5]];
+const DIRS = [[-1,0],[0,1],[1,0],[0,-1]];
+const OPP = [2,3,0,1];
 
 function idx(r, c) { return r * GRID + c; }
 function inBounds(r, c) { return r >= 0 && r < GRID && c >= 0 && c < GRID; }
-
-function isCorner(r, c) {
-  return CORNERS.some(([cr, cc]) => cr === r && cc === c);
-}
-
-// Neighbors: [N, E, S, W] → [dr, dc]
-const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
-const OPP = [2, 3, 0, 1];
+function isCorner(r, c) { return CORNERS.some(([cr, cc]) => cr === r && cc === c); }
 
 export function newGame(seed) {
   const rng = mulberry32(seed);
   let beachR, beachC;
-  do {
-    beachR = rollD6(rng) - 1;
-    beachC = rollD6(rng) - 1;
-  } while (isCorner(beachR, beachC));
-
+  do { beachR = rollD6(rng) - 1; beachC = rollD6(rng) - 1; } while (isCorner(beachR, beachC));
   const deck = shuffle(buildDeck(), rng);
 
   return {
@@ -31,419 +22,219 @@ export function newGame(seed) {
     beach: { r: beachR, c: beachC },
     deck,
     discard: [],
-    hand: [],
-    treats: 5,
+    velvetPos: null,
+    cat: { active: false, r: -1, c: -1 },
     turn: 0,
     phase: 'setup',
-    dice: { row: null, col: null },
     drawn: [],
     picked: null,
     score: null,
+    endReason: null,
     seed,
     rngState: seed,
-    log: [`Beach placed at (${beachR + 1}, ${beachC + 1}). Choose your starting corner!`],
-    skipNextTurn: false,
-    completedLines: [],
+    log: [`Beach at (${beachR + 1}, ${beachC + 1}). Pick your starting corner!`],
   };
 }
 
-function cloneState(state) {
-  return structuredClone(state);
-}
-
-function getRng(state) {
-  return mulberry32(state.rngState);
-}
-
-function advanceRng(state) {
-  const rng = mulberry32(state.rngState);
-  rng();
-  state.rngState = state.rngState + 1;
-  return mulberry32(state.rngState);
-}
+function clone(s) { return structuredClone(s); }
 
 export function act(state, action) {
-  const s = cloneState(state);
+  const s = clone(state);
   const rng = mulberry32(s.rngState);
-
   switch (action.type) {
-    case 'chooseCorner':
-      return chooseCorner(s, action, rng);
-    case 'roll':
-      return roll(s, rng);
-    case 'drawCards':
-      return drawCards(s, rng);
-    case 'pickCard':
-      return pickCard(s, action);
-    case 'placeCard':
-      return placeCard(s, action, rng);
-    case 'nudge':
-      return nudge(s, action);
-    case 'fetch':
-      return fetch_(s, action);
-    case 'digUp':
-      return digUp(s, rng);
-    case 'skipTurn':
-      return skipTurn(s);
-    case 'keepCard':
-      return keepCard(s, action);
-    default:
-      return s;
+    case 'chooseCorner': return doChooseCorner(s, action, rng);
+    case 'pickCard': return doPickCard(s, action);
+    case 'placeCard': return doPlaceCard(s, action);
+    case 'skipTurn': return doSkipTurn(s);
+    default: return s;
   }
 }
 
-function chooseCorner(s, action, rng) {
-  const { r, c } = action;
-  if (!isCorner(r, c)) return s;
-  if (r === s.beach.r && c === s.beach.c) return s;
-
-  s.start = { r, c };
-  s.board[idx(r, c)] = { type: 'start', doors: [true, true, true, true] };
-  s.phase = 'roll';
+function doChooseCorner(s, a, rng) {
+  if (s.phase !== 'setup') return s;
+  if (!isCorner(a.r, a.c) || (a.r === s.beach.r && a.c === s.beach.c)) return s;
+  s.start = { r: a.r, c: a.c };
+  s.velvetPos = { r: a.r, c: a.c };
+  s.board[idx(a.r, a.c)] = { type: 'start', doors: [true, true, true, true] };
   s.turn = 1;
-  s.log.push(`Velvet starts at (${r + 1}, ${c + 1}). Let's ZOOM!`);
-  s.rngState = s.rngState + 1;
-  return s;
+  s.rngState += 1;
+  s.log.push(`Velvet starts at (${a.r + 1}, ${a.c + 1}). Let's ZOOM!`);
+  return startTurn(s);
 }
 
-function roll(s, rng) {
-  if (s.phase !== 'roll') return s;
-
-  if (s.skipNextTurn) {
-    s.skipNextTurn = false;
-    s.turn++;
-    s.log.push(`Velvet is recovering from the whistle... turn skipped!`);
-    return s;
-  }
-
-  const r1 = rollD6(rng);
-  const r2 = rollD6(rng);
-  s.dice = { row: r1 - 1, col: r2 - 1 };
-  s.phase = 'draw';
-  s.rngState = s.rngState + 2;
-  s.log.push(`Rolled (${r1}, ${r2}) — target cell (${r1}, ${r2})`);
-  return s;
-}
-
-function drawCards(s, rng) {
-  if (s.phase !== 'draw') return s;
+function startTurn(s) {
+  const rng = mulberry32(s.rngState);
+  if (s.deck.length === 0) return endGame(s, 'deck', 'The deck is empty!');
 
   s.drawn = [];
-  let hazardTriggered = [];
-  let drawCount = 3;
+  const drawCount = Math.min(2, s.deck.length);
+  let hazardsDone = [];
 
-  for (let i = 0; i < drawCount && s.deck.length > 0; i++) {
+  let i = 0;
+  while (i < drawCount && s.deck.length > 0) {
     const card = s.deck.shift();
     if (card.hazard) {
-      hazardTriggered.push(card);
-      if (s.deck.length > 0) {
-        i--;
+      hazardsDone.push(card);
+      s.rngState += 2;
+      const result = resolveHazard(s, card, mulberry32(s.rngState));
+      if (result === 'gameover') return s;
+      continue;
+    }
+    s.drawn.push(card);
+    i++;
+  }
+
+  if (s.drawn.length === 0) {
+    if (s.deck.length === 0) return endGame(s, 'deck', 'No cards left to draw!');
+    while (s.drawn.length < 2 && s.deck.length > 0) {
+      const card = s.deck.shift();
+      if (card.hazard) {
+        s.rngState += 2;
+        resolveHazard(s, card, mulberry32(s.rngState));
+        if (s.phase === 'end') return s;
+        continue;
       }
-    } else {
       s.drawn.push(card);
     }
   }
 
-  for (const hz of hazardTriggered) {
-    placeHazard(s, hz, rng);
-  }
+  if (s.drawn.length === 0) return endGame(s, 'deck', 'No path cards left!');
 
-  if (s.drawn.length === 0 && s.hand.length === 0) {
-    return endGame(s, 'No cards available!');
-  }
+  if (!canPlaceAny(s, s.drawn)) return endGame(s, 'stuck', 'No valid moves — Velvet is stuck!');
 
   s.phase = 'pick';
-  s.rngState = s.rngState + 3 + hazardTriggered.length * 2;
+  s.rngState += 1;
   return s;
 }
 
-function placeHazard(s, hazard, rng) {
-  let hr = rollD6(rng) - 1;
-  let hc = rollD6(rng) - 1;
-
-  let attempts = 0;
-  while (s.board[idx(hr, hc)] !== null && attempts < 36) {
-    hc++;
-    if (hc >= GRID) { hc = 0; hr++; }
-    if (hr >= GRID) { hr = 0; }
-    attempts++;
-  }
-
-  if (attempts >= 36) {
-    s.log.push(`${hazard.label} couldn't be placed — board is full!`);
-    return;
-  }
-
-  if (hazard.hazard === 'whistle') {
-    if (s.treats > 0) {
-      s.treats--;
-      s.log.push(`Recall Whistle! Velvet resists but loses 1 treat. (${s.treats} left)`);
-    } else {
-      s.skipNextTurn = true;
-      s.log.push(`Recall Whistle! No treats — Velvet must skip next turn!`);
-    }
+function resolveHazard(s, hazard, rng) {
+  if (hazard.hazard === 'meancat') {
+    s.cat = { active: true, r: s.start.r, c: s.start.c };
     s.discard.push(hazard);
-    return;
+    s.log.push('😾 MEAN CAT! A cat enters the park at your starting spot!');
+    return 'ok';
   }
 
-  s.board[idx(hr, hc)] = { type: 'hazard', hazard: hazard.hazard, id: hazard.id };
-  s.log.push(`${hazard.label} placed at (${hr + 1}, ${hc + 1})!`);
+  const hr = rollD6(rng) - 1;
+  const hc = rollD6(rng) - 1;
+  const icons = { squirrel: '🐿️', puddle: '💧' };
 
-  if (hazard.hazard === 'muddy') {
-    for (let d = 0; d < 4; d++) {
-      const [dr, dc] = DIRS[d];
-      const nr = hr + dr;
-      const nc = hc + dc;
-      if (inBounds(nr, nc)) {
-        const cell = s.board[idx(nr, nc)];
-        if (cell && cell.type === 'path') {
-          cell.mudBlocked = cell.mudBlocked || [];
-          cell.mudBlocked.push(OPP[d]);
-        }
-      }
-    }
+  if (hr === s.beach.r && hc === s.beach.c) {
+    s.log.push(`${icons[hazard.hazard]} ${hazard.label} rolled (${hr+1},${hc+1}) — landed on the BEACH!`);
+    endGame(s, 'beach_hazard', `${hazard.label} destroyed the beach! Game over!`);
+    return 'gameover';
   }
+  if (s.velvetPos && hr === s.velvetPos.r && hc === s.velvetPos.c) {
+    s.log.push(`${icons[hazard.hazard]} ${hazard.label} rolled (${hr+1},${hc+1}) — landed on Velvet!`);
+    endGame(s, 'player_hazard', `${hazard.label} landed right on Velvet! Game over!`);
+    return 'gameover';
+  }
+  if (s.board[idx(hr, hc)] === null && !(hr === s.beach.r && hc === s.beach.c)) {
+    s.board[idx(hr, hc)] = { type: 'hazard', hazard: hazard.hazard, id: hazard.id };
+    s.log.push(`${icons[hazard.hazard]} ${hazard.label} at (${hr+1}, ${hc+1})! That space is blocked.`);
+  } else {
+    s.log.push(`${icons[hazard.hazard]} ${hazard.label} rolled (${hr+1},${hc+1}) — already occupied. Lucky!`);
+  }
+  s.discard.push(hazard);
+  return 'ok';
 }
 
-function pickCard(s, action) {
+function doPickCard(s, a) {
   if (s.phase !== 'pick') return s;
-  const { cardId, fromHand } = action;
+  const ci = s.drawn.findIndex(c => c.id === a.cardId);
+  if (ci === -1) return s;
 
-  let card;
-  if (fromHand) {
-    const hi = s.hand.findIndex(c => c.id === cardId);
-    if (hi === -1) return s;
-    card = s.hand.splice(hi, 1)[0];
-  } else {
-    const di = s.drawn.findIndex(c => c.id === cardId);
-    if (di === -1) return s;
-    card = s.drawn.splice(di, 1)[0];
-  }
+  s.picked = s.drawn.splice(ci, 1)[0];
+  for (const c of s.drawn) s.discard.push(c);
+  s.drawn = [];
 
-  s.picked = card;
+  if (!hasValidPlacement(s, s.picked)) return endGame(s, 'stuck', `Can't place ${s.picked.label} anywhere!`);
   s.phase = 'place';
   return s;
 }
 
-function placeCard(s, action, rng) {
+function doPlaceCard(s, a) {
   if (s.phase !== 'place' || !s.picked) return s;
-  const { r, c, rot } = action;
-
-  if (!inBounds(r, c)) return s;
-  if (s.board[idx(r, c)] !== null) return s;
+  const { r, c, rot } = a;
+  if (!inBounds(r, c) || s.board[idx(r, c)] !== null) return s;
+  if (r === s.beach.r && c === s.beach.c) return s;
 
   const card = s.picked;
-  const baseDoors = SHAPES[card.shape];
-  const doors = rotateDoors(baseDoors, rot);
+  const doors = rotateDoors(SHAPES[card.shape], rot);
 
-  const cell = {
-    type: 'path',
-    cardId: card.id,
-    shape: card.shape,
-    rot: rot,
-    doors: [...doors],
-    tunnel: card.tunnel || false,
+  if (!isValidPlacement(s, r, c, doors)) return s;
+
+  s.board[idx(r, c)] = {
+    type: 'path', cardId: card.id, shape: card.shape,
+    rot, doors: [...doors], icon: card.icon,
+    tunnel: false,
   };
-
-  if (card.tunnel) {
-    cell.tunnelDoors = [...doors];
-  }
-
-  s.board[idx(r, c)] = cell;
-
-  if (card.treatBonus) {
-    s.treats += card.treatBonus;
-    s.log.push(`Velvet found a treat in a dead end! (+${card.treatBonus} treat)`);
-  }
-
-  const junctionBonus = checkJunctionBonus(s, r, c, doors);
-  if (junctionBonus) {
-    s.treats += 1;
-    s.log.push(`Pawfect connection! T/Crossroads links 3+ paths. +1 treat!`);
-  }
-
-  checkLineCompletion(s);
-
+  s.velvetPos = { r, c };
   s.picked = null;
-
-  for (const leftover of s.drawn) {
-    s.discard.push(leftover);
-  }
-  s.drawn = [];
-
   s.log.push(`Placed ${card.label} at (${r + 1}, ${c + 1})`);
 
-  if (checkVictory(s)) {
-    return endGame(s, 'Velvet reached the BEACH! ZOOMIES!!! 🏖️');
+  if (card.bonus === 'shuffle') {
+    const count = s.discard.length;
+    if (count > 0) {
+      s.deck.push(...s.discard);
+      s.discard = [];
+      s.rngState += 1;
+      s.deck = shuffle(s.deck, mulberry32(s.rngState));
+      s.log.push(`🌀 Roll Spot! ${count} cards shuffled back into the deck!`);
+    }
   }
 
-  if (s.deck.length === 0 && s.hand.length === 0) {
-    return endGame(s, 'Deck is empty!');
+  if (checkVictory(s)) return endGame(s, 'win', 'Velvet reached the BEACH! 🏖️');
+
+  if (s.cat.active) {
+    moveCat(s);
+    if (s.phase === 'end') return s;
   }
 
-  s.phase = 'keepOrEnd';
-  return s;
+  s.turn++;
+  return startTurn(s);
 }
 
-function nudge(s, action) {
-  if (s.phase !== 'place') return s;
-  if (s.treats < 1) return s;
-  const { axis, dir } = action;
-
-  let newR = s.dice.row;
-  let newC = s.dice.col;
-
-  if (axis === 'row') newR += dir;
-  else newC += dir;
-
-  if (!inBounds(newR, newC)) return s;
-
-  s.treats -= 1;
-  s.dice = { row: newR, col: newC };
-  s.log.push(`Nudged ${axis} ${dir > 0 ? '+' : ''}${dir}. Target now (${newR + 1}, ${newC + 1}). (${s.treats} treats left)`);
-  return s;
+function doSkipTurn(s) {
+  if (s.phase !== 'pick' && s.phase !== 'place') return s;
+  return endGame(s, 'stuck', 'Velvet gave up!');
 }
 
-function fetch_(s, action) {
-  if (s.phase !== 'place') return s;
-  if (s.treats < 2) return s;
-  const { r, c } = action;
-
-  if (!inBounds(r, c) || s.board[idx(r, c)] !== null) return s;
-
+function isValidPlacement(s, r, c, doors) {
   const connected = getConnectedCells(s);
-  let adjacent = false;
-  for (const [cr, cc] of connected) {
-    for (const [dr, dc] of DIRS) {
-      if (cr + dr === r && cc + dc === c) {
-        adjacent = true;
-        break;
-      }
-    }
-    if (adjacent) break;
-  }
-
-  if (!adjacent) return s;
-
-  s.treats -= 2;
-  s.dice = { row: r, col: c };
-  s.log.push(`Fetch! Placing on (${r + 1}, ${c + 1}) for 2 treats. (${s.treats} left)`);
-  return s;
-}
-
-function digUp(s, rng) {
-  if (s.phase !== 'draw') return s;
-  if (s.treats < 1) return s;
-  if (s.deck.length === 0) return s;
-
-  s.treats -= 1;
-  const top3 = s.deck.splice(0, Math.min(3, s.deck.length));
-  s.drawn = top3.filter(c => !c.hazard);
-  const hazards = top3.filter(c => c.hazard);
-
-  for (const hz of hazards) {
-    placeHazard(s, hz, rng);
-  }
-
-  if (s.drawn.length === 0 && s.hand.length === 0) {
-    return endGame(s, 'No cards available!');
-  }
-
-  s.phase = 'pick';
-  s.rngState = s.rngState + 4;
-  s.log.push(`Dig Up! Peeked at ${top3.length} cards. (${s.treats} treats left)`);
-  return s;
-}
-
-function skipTurn(s) {
-  if (s.phase !== 'place' && s.phase !== 'pick') return s;
-
-  if (s.picked) s.discard.push(s.picked);
-  for (const c of s.drawn) s.discard.push(c);
-  s.picked = null;
-  s.drawn = [];
-  s.phase = 'roll';
-  s.turn++;
-  s.log.push(`Velvet got distracted! Turn lost.`);
-  return s;
-}
-
-function keepCard(s, action) {
-  if (s.phase !== 'keepOrEnd') return s;
-  const { cardId } = action;
-
-  if (cardId && s.drawn.length > 0) {
-    if (s.hand.length >= 2) return s;
-    const ci = s.drawn.findIndex(c => c.id === cardId);
-    if (ci !== -1) {
-      s.hand.push(s.drawn.splice(ci, 1)[0]);
-    }
-  }
-
-  for (const c of s.drawn) s.discard.push(c);
-  s.drawn = [];
-
-  s.phase = 'roll';
-  s.turn++;
-  return s;
-}
-
-function checkJunctionBonus(s, r, c, doors) {
-  let connectedSegments = 0;
   for (let d = 0; d < 4; d++) {
     if (!doors[d]) continue;
     const [dr, dc] = DIRS[d];
-    const nr = r + dr;
-    const nc = c + dc;
+    const nr = r + dr, nc = c + dc;
     if (!inBounds(nr, nc)) continue;
+    if (!connected.some(([cr, cc]) => cr === nr && cc === nc)) continue;
     const neighbor = s.board[idx(nr, nc)];
     if (!neighbor) continue;
-    if (neighbor.type === 'path' || neighbor.type === 'start') {
-      const nDoors = neighbor.doors || [true, true, true, true];
-      if (nDoors[OPP[d]]) {
-        connectedSegments++;
-      }
-    }
+    const nDoors = neighbor.doors || [true, true, true, true];
+    if (nDoors[OPP[d]]) return true;
   }
-  return connectedSegments >= 3 && (doors.filter(Boolean).length >= 3);
+  return false;
 }
 
-function checkLineCompletion(s) {
-  for (let r = 0; r < GRID; r++) {
-    const key = `row_${r}`;
-    if (s.completedLines.includes(key)) continue;
-    let full = true;
-    for (let c = 0; c < GRID; c++) {
-      const cell = s.board[idx(r, c)];
-      if (!cell || (cell.type !== 'path' && cell.type !== 'start')) {
-        full = false;
-        break;
-      }
-    }
-    if (full) {
-      s.completedLines.push(key);
-      s.treats += 2;
-      s.log.push(`Row ${r + 1} complete! +2 treats!`);
-    }
-  }
-
-  for (let c = 0; c < GRID; c++) {
-    const key = `col_${c}`;
-    if (s.completedLines.includes(key)) continue;
-    let full = true;
+function hasValidPlacement(s, card) {
+  for (let rot = 0; rot < 4; rot++) {
+    const doors = rotateDoors(SHAPES[card.shape], rot);
     for (let r = 0; r < GRID; r++) {
-      const cell = s.board[idx(r, c)];
-      if (!cell || (cell.type !== 'path' && cell.type !== 'start')) {
-        full = false;
-        break;
+      for (let c = 0; c < GRID; c++) {
+        if (s.board[idx(r, c)] !== null) continue;
+        if (r === s.beach.r && c === s.beach.c) continue;
+        if (isValidPlacement(s, r, c, doors)) return true;
       }
     }
-    if (full) {
-      s.completedLines.push(key);
-      s.treats += 2;
-      s.log.push(`Column ${c + 1} complete! +2 treats!`);
-    }
   }
+  return false;
+}
+
+function canPlaceAny(s, cards) {
+  for (const card of cards) {
+    if (hasValidPlacement(s, card)) return true;
+  }
+  return false;
 }
 
 export function getConnectedCells(s) {
@@ -451,117 +242,116 @@ export function getConnectedCells(s) {
   const visited = new Set();
   const queue = [[s.start.r, s.start.c]];
   visited.add(idx(s.start.r, s.start.c));
-
   while (queue.length > 0) {
     const [r, c] = queue.shift();
     const cell = s.board[idx(r, c)];
     if (!cell) continue;
-
     const doors = cell.doors || [true, true, true, true];
     for (let d = 0; d < 4; d++) {
       if (!doors[d]) continue;
-      if (cell.mudBlocked && cell.mudBlocked.includes(d)) continue;
-
       const [dr, dc] = DIRS[d];
-      const nr = r + dr;
-      const nc = c + dc;
-      if (!inBounds(nr, nc)) continue;
-      if (visited.has(idx(nr, nc))) continue;
-
-      const neighbor = s.board[idx(nr, nc)];
-      if (!neighbor) continue;
-      if (neighbor.type === 'hazard') continue;
-
-      const nDoors = neighbor.doors || [true, true, true, true];
-      const oppDir = OPP[d];
-      if (!nDoors[oppDir]) continue;
-      if (neighbor.mudBlocked && neighbor.mudBlocked.includes(oppDir)) continue;
-
+      const nr = r + dr, nc = c + dc;
+      if (!inBounds(nr, nc) || visited.has(idx(nr, nc))) continue;
+      const n = s.board[idx(nr, nc)];
+      if (!n || n.type === 'hazard') continue;
+      const nd = n.doors || [true, true, true, true];
+      if (!nd[OPP[d]]) continue;
       visited.add(idx(nr, nc));
       queue.push([nr, nc]);
     }
   }
-
   return [...visited].map(i => [Math.floor(i / GRID), i % GRID]);
 }
 
-function checkVictory(s) {
-  const connected = getConnectedCells(s);
-  const { r: br, c: bc } = s.beach;
+function bfsPath(s, from, to) {
+  const visited = new Map();
+  const queue = [[from.r, from.c]];
+  visited.set(idx(from.r, from.c), null);
+  while (queue.length > 0) {
+    const [r, c] = queue.shift();
+    if (r === to.r && c === to.c) {
+      const path = [];
+      let cur = idx(r, c);
+      while (cur !== null) { path.unshift([Math.floor(cur / GRID), cur % GRID]); cur = visited.get(cur); }
+      return path;
+    }
+    const cell = s.board[idx(r, c)];
+    if (!cell) continue;
+    const doors = cell.doors || [true, true, true, true];
+    for (let d = 0; d < 4; d++) {
+      if (!doors[d]) continue;
+      const [dr, dc] = DIRS[d];
+      const nr = r + dr, nc = c + dc;
+      if (!inBounds(nr, nc) || visited.has(idx(nr, nc))) continue;
+      const n = s.board[idx(nr, nc)];
+      if (!n || n.type === 'hazard') continue;
+      const nd = n.doors || [true, true, true, true];
+      if (!nd[OPP[d]]) continue;
+      visited.set(idx(nr, nc), idx(r, c));
+      queue.push([nr, nc]);
+    }
+  }
+  return null;
+}
 
-  for (const [cr, cc] of connected) {
+function moveCat(s) {
+  if (!s.cat.active) return;
+  const path = bfsPath(s, s.cat, s.velvetPos);
+  if (!path || path.length <= 1) {
+    endGame(s, 'cat', '😾 The Mean Cat caught Velvet!');
+    return;
+  }
+  const steps = Math.min(2, path.length - 1);
+  s.cat.r = path[steps][0];
+  s.cat.c = path[steps][1];
+  s.log.push(`😾 Mean Cat prowls to (${s.cat.r + 1}, ${s.cat.c + 1})...`);
+  if (s.cat.r === s.velvetPos.r && s.cat.c === s.velvetPos.c) {
+    endGame(s, 'cat', '😾 The Mean Cat caught Velvet! Game over!');
+  }
+}
+
+function checkVictory(s) {
+  const conn = getConnectedCells(s);
+  const { r: br, c: bc } = s.beach;
+  for (const [cr, cc] of conn) {
     for (let d = 0; d < 4; d++) {
       const [dr, dc] = DIRS[d];
-      if (cr + dr === br && cc + dc === bc) {
-        const cell = s.board[idx(cr, cc)];
-        const doors = cell.doors || [true, true, true, true];
-        if (doors[d] && !(cell.mudBlocked && cell.mudBlocked.includes(d))) {
-          return true;
-        }
-      }
+      if (cr + dr !== br || cc + dc !== bc) continue;
+      const cell = s.board[idx(cr, cc)];
+      const doors = cell.doors || [true, true, true, true];
+      if (doors[d]) return true;
     }
   }
   return false;
 }
 
-function endGame(s, reason) {
+export function calculateScore(s) {
+  const conn = getConnectedCells(s);
+  const reached = s.endReason === 'win';
+  return { tiles: conn.length, total: reached ? conn.length : 0, reached };
+}
+
+function endGame(s, reason, msg) {
   s.phase = 'end';
+  s.endReason = reason;
   s.score = calculateScore(s);
-  s.log.push(reason);
-  s.log.push(`Final score: ${s.score.total}`);
+  s.log.push(msg);
+  if (s.score.total > 0) s.log.push(`Score: ${s.score.total} tiles!`);
+  else s.log.push('Score: 0 — Velvet didn\'t reach the beach.');
   return s;
 }
 
-export function calculateScore(s) {
-  const connected = getConnectedCells(s);
-  const reachedBeach = checkVictory(s);
-  const pathLength = connected.length;
-
-  let hazardsAdjacent = 0;
-  for (const [r, c] of connected) {
-    for (const [dr, dc] of DIRS) {
-      const nr = r + dr;
-      const nc = c + dc;
-      if (inBounds(nr, nc)) {
-        const cell = s.board[idx(nr, nc)];
-        if (cell && cell.type === 'hazard') hazardsAdjacent++;
-      }
+export function getValidSpots(s, card, rot) {
+  const doors = rotateDoors(SHAPES[card.shape], rot);
+  const spots = [];
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      if (s.board[idx(r, c)] !== null) continue;
+      if (r === s.beach.r && c === s.beach.c) continue;
+      if (isValidPlacement(s, r, c, doors)) spots.push([r, c]);
     }
   }
-
-  const manhattan = s.start
-    ? Math.abs(s.start.r - s.beach.r) + Math.abs(s.start.c - s.beach.c)
-    : 0;
-
-  let emptyBetween = 0;
-  if (s.start) {
-    const minR = Math.min(s.start.r, s.beach.r);
-    const maxR = Math.max(s.start.r, s.beach.r);
-    const minC = Math.min(s.start.c, s.beach.c);
-    const maxC = Math.max(s.start.c, s.beach.c);
-    for (let r = minR; r <= maxR; r++) {
-      for (let c = minC; c <= maxC; c++) {
-        if (!s.board[idx(r, c)]) emptyBetween++;
-      }
-    }
-  }
-
-  const beachPoints = reachedBeach ? 50 : 0;
-  const pathPoints = pathLength * 3;
-  const treatPoints = s.treats * 5;
-  const hazardPoints = hazardsAdjacent * 2;
-  const emptyPenalty = emptyBetween * -1;
-  const scenicBonus = pathLength >= manhattan * 1.5 ? 10 : 0;
-
-  return {
-    beachPoints,
-    pathPoints,
-    treatPoints,
-    hazardPoints,
-    emptyPenalty,
-    scenicBonus,
-    total: beachPoints + pathPoints + treatPoints + hazardPoints + emptyPenalty + scenicBonus,
-  };
+  return spots;
 }
 
-export { GRID, DIRS, OPP, idx, inBounds, isCorner };
+export { GRID, DIRS, OPP, idx, inBounds, isCorner, shuffle };
