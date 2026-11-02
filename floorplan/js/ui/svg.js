@@ -209,7 +209,7 @@ function walls(doors, locks) {
 export function roomSvg(id, doors, { locks = [], label = true, extra = '' } = {}) {
   const room = ROOMS[id];
   const fam = FAMILIES[room.family];
-  const floor = id === 'vault' ? '#f2c94c' : id === 'stair' ? '#c9d3cf' : fam.color;
+  const floor = (id === 'vault' || id === 'vault_side' || id === 'vault_open') ? '#f2c94c' : id === 'stair' ? '#c9d3cf' : fam.color;
   const art = (ART[id] || FAMILY_ART[room.family])();
   const words = room.name.split(' ');
   const two = label && words.length > 1 && room.name.length > 10;

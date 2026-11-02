@@ -42,6 +42,8 @@ export const ROOMS = {
   stair: R('stair', 'Stairwell', 'special', 'D', 0, 'rare', '🪜', 'The way up. Connect a door to it and meet the goal to clear the Night.'),
   closet: R('closet', 'Broom Closet', 'blue', 'D', 0, 'common', '🧹', 'Fallback. Does nothing.'),
   rubble: R('rubble', 'Rubble Heap', 'crimson', 'D', 0, 'common', '🧱', 'Lose 1 Step.', { onPlace: (c) => c.gain('steps', -1) }),
+  vault_side: R('vault_side', 'The Vault', 'special', 'L', 0, 'legendary', '👑', 'The goal. Two ways in.'),
+  vault_open: R('vault_open', 'The Vault', 'special', 'T', 0, 'legendary', '👑', 'The goal. Multiple ways in.'),
 
   // ---- Blue Halls: draft & deck control ----
   foyer: R('foyer', 'Foyer', 'blue', 'T', 0, 'common', '🪞', 'A plain junction.'),
@@ -256,4 +258,4 @@ export const ROOMS = {
   }),
 };
 
-export const isDraftable = (id) => !['entrance', 'vault', 'stair', 'closet', 'rubble'].includes(id);
+export const isDraftable = (id) => !['entrance', 'vault', 'vault_side', 'vault_open', 'stair', 'closet', 'rubble'].includes(id);

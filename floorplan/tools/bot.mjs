@@ -4,18 +4,26 @@ import {
 } from '../js/engine/engine.js';
 import { EVENTS } from '../js/data/nights.js';
 
-function approach(s) {
+function approaches(s) {
   const v = cellAt(s, s.vault.r, s.vault.c);
-  const d = v.doors.findIndex(Boolean);
-  return { r: s.vault.r + DIRS[d][0], c: s.vault.c + DIRS[d][1] };
+  const out = [];
+  for (let d = 0; d < 4; d++) {
+    if (!v.doors[d]) continue;
+    const r = s.vault.r + DIRS[d][0], c = s.vault.c + DIRS[d][1];
+    if (cellAt(s, r, c) === null) out.push({ r, c });
+  }
+  return out;
 }
-// BFS distance through empty cells to the cell in front of the goal.
 function distanceMap(s) {
-  const goal = approach(s);
+  const goals = approaches(s);
   const dist = new Map();
-  if (cellAt(s, goal.r, goal.c) !== null) return dist;
-  dist.set(`${goal.r},${goal.c}`, 0);
-  const q = [goal];
+  const q = [];
+  for (const goal of goals) {
+    if (cellAt(s, goal.r, goal.c) !== null) continue;
+    dist.set(`${goal.r},${goal.c}`, 0);
+    q.push(goal);
+  }
+  if (!q.length) return dist;
   while (q.length) {
     const cur = q.shift();
     const k = dist.get(`${cur.r},${cur.c}`);

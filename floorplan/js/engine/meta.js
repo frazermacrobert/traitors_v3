@@ -9,7 +9,7 @@ export function newMeta() {
     v: 2, ink: 0, totalInk: 0, runs: 0, wins: 0, owned: [], seenHelp: false,
     upgrades: {}, collection: [], equipped: [], heirloomsFound: [], startHeirloom: null, pendingKeep: null, discoveries: [],
     mansions: Object.fromEntries(MANSIONS.map((m) => [m.id, { wins: 0, best: 0, maxDeed: 0, losses: 0 }])),
-    last: { mansionId: 'm1', deed: 0, deckId: 'standard', mode: 'endless' },
+    last: { mansionId: 'm1', deed: 0, deckId: 'standard', mode: 'endless', difficulty: 'hard' },
   };
 }
 
@@ -40,9 +40,9 @@ export const upgradeLevel = (meta, id) => meta.upgrades[id] || 0;
 export const blueprintSlots = (meta) => BASE_SLOTS + upgradeLevel(meta, 'table');
 export const hasFamilyChest = (meta) => ownedOf(meta, 'perk').includes('heirloom');
 
-export function runOptions(meta, { mansionId, deed, deckId, seed, mode = 'endless' }) {
+export function runOptions(meta, { mansionId, deed, deckId, seed, mode = 'endless', difficulty = 'hard' }) {
   return {
-    seed, mansionId, deed, deckId, mode,
+    seed, mansionId, deed, deckId, mode, difficulty,
     unlockedRooms: ownedOf(meta, 'room'),
     perks: ownedOf(meta, 'perk'),
     upgrades: { ...meta.upgrades },

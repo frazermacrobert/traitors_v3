@@ -27,7 +27,8 @@ export const roomDoors = (id, rot) => rotateDoors(SHAPES[ROOMS[id].shape].doors,
 export const mansionById = (id) => MANSIONS.find((m) => m.id === id);
 const key = (r, c) => `${r},${c}`;
 const lockKey = (r, c, d) => `${r},${c},${d}`;
-const LANDMARKS = ['entrance', 'vault', 'stair'];
+const LANDMARKS = ['entrance', 'vault', 'vault_side', 'vault_open', 'stair'];
+export const isVault = (id) => id === 'vault' || id === 'vault_side' || id === 'vault_open';
 
 export function cellAt(s, r, c) {
   if (r < 0 || c < 0 || r >= s.h || c >= s.w) return undefined; // out of bounds
@@ -84,12 +85,12 @@ function mk(id, rot, preset = false) { return { id, rot, doors: roomDoors(id, ro
 // ---------- setup ----------
 export function newRun({
   seed = Date.now(), mansionId = 'm1', deed = 0, deckId = 'standard', unlockedRooms = [], perks = [],
-  upgrades = {}, extraCards = [], startHeirloom = null, discoveredRooms = [], mode = 'endless',
+  upgrades = {}, extraCards = [], startHeirloom = null, discoveredRooms = [], mode = 'endless', difficulty = 'hard',
 } = {}) {
   const m = mansionById(mansionId);
   if (!m) throw new Error(`Unknown mansion ${mansionId}`);
   const s = {
-    v: 2, seed, rng: hashSeed(seed), mansionId, deed, deckId, mode, night: 0,
+    v: 2, seed, rng: hashSeed(seed), mansionId, deed, deckId, mode, difficulty, night: 0,
     w: m.w, h: m.h, cells: [], locks: {}, lockedCells: {}, mystery: {}, entrance: null, vault: null, goal: null, omen: null,
     res: { steps: 0, gems: 1, keys: 1, coins: 0, rerolls: 1 },
     deck: [], discard: [], heirlooms: [], counters: {}, pool: [], lastPlaced: null,
@@ -115,7 +116,7 @@ export function newRun({
 }
 
 // Generates the floor for Night n. Guarantees a path of empty cells from the entrance to the goal.
-export function generateFloor(m, n, rng) {
+export function generateFloor(m, n, rng, difficulty = 'hard') {
   const g = { rng };
   const r = () => rand(g);
   const ri = (k) => Math.floor(r() * k);
@@ -124,11 +125,28 @@ export function generateFloor(m, n, rng) {
     const cells = Array(w * h).fill(null);
     const at = (rr, cc) => rr * w + cc;
     const entrance = { r: h - 1, c: 1 + ri(w - 2) };
-    const goal = { r: 0, c: ri(w) };
-    const approach = { r: 1, c: goal.c };
+    let goal, approach;
+    if (n === NIGHTS && difficulty === 'easy') {
+      const gr = 2 + ri(Math.max(1, Math.floor(h / 2) - 2));
+      const gc = 1 + ri(w - 2);
+      goal = { r: gr, c: gc };
+      approach = { r: gr + 1, c: gc };
+    } else if (n === NIGHTS && difficulty === 'normal') {
+      goal = { r: 0, c: ri(w) };
+      approach = { r: 1, c: goal.c };
+    } else {
+      goal = { r: 0, c: ri(w) };
+      approach = { r: 1, c: goal.c };
+    }
     cells[at(entrance.r, entrance.c)] = 'E';
     cells[at(goal.r, goal.c)] = 'G';
     const protectedKeys = new Set([key(approach.r, approach.c), key(entrance.r - 1, entrance.c)]);
+    if (n === NIGHTS && difficulty === 'easy') {
+      for (const [dr, dc] of DIRS) {
+        const ar = goal.r + dr, ac = goal.c + dc;
+        if (ar >= 0 && ac >= 0 && ar < h && ac < w) protectedKeys.add(key(ar, ac));
+      }
+    }
     const free = [];
     for (let rr = 0; rr < h; rr++) for (let cc = 0; cc < w; cc++) {
       if (cells[at(rr, cc)] || protectedKeys.has(key(rr, cc))) continue;
@@ -190,7 +208,7 @@ function startNight(s, n, carry) {
   const omens = Object.values(OMENS).filter((o) => o.tier <= tier && o.tier >= tier - 1);
   s.omen = pick(s, omens).id;
   const omen = OMENS[s.omen];
-  const fl = generateFloor({ ...m, extraBlocks: omen.extraBlocks || 0 }, n, s.rng);
+  const fl = generateFloor({ ...m, extraBlocks: omen.extraBlocks || 0 }, n, s.rng, s.difficulty);
   s.rng = fl.rng;
   s.cells = Array(m.w * m.h).fill(null);
   s.locks = {};
@@ -200,7 +218,19 @@ function startNight(s, n, carry) {
   s.entrance = fl.entrance;
   s.vault = fl.goal;
   setCell(s, fl.entrance.r, fl.entrance.c, mk('entrance', 0, true));
-  setCell(s, fl.goal.r, fl.goal.c, mk(n === NIGHTS ? 'vault' : 'stair', 2, true));
+  if (n !== NIGHTS) {
+    setCell(s, fl.goal.r, fl.goal.c, mk('stair', 2, true));
+  } else {
+    const diff = s.difficulty || 'hard';
+    let vaultId = 'vault';
+    let vaultRot = 2;
+    if (diff === 'easy') {
+      vaultId = 'vault_open'; vaultRot = 0;
+    } else if (diff === 'normal') {
+      vaultId = 'vault_side'; vaultRot = rand(s) < 0.5 ? 1 : 2;
+    }
+    setCell(s, fl.goal.r, fl.goal.c, mk(vaultId, vaultRot, true));
+  }
   for (const b of fl.blocks) setCell(s, b.r, b.c, { blocked: true });
   for (const p of fl.mystery) s.mystery[key(p.r, p.c)] = true;
   for (const p of fl.locked) s.lockedCells[key(p.r, p.c)] = true;
@@ -448,7 +478,7 @@ export const vaultToll = goalTarget; // back-compat name used by UI/bot
 export function isWon(s) { return vaultConnected(s) && goalMet(s); }
 export const RES_NAMES = { gems: 'Gems', coins: 'Coins', keys: 'Keys', steps: 'Steps' };
 export function goalText(s) {
-  const where = s.night === NIGHTS ? 'the Vault' : 'the Stairwell';
+  const where = s.night === NIGHTS ? (s.mode === 'story' ? 'the Crime Scene' : 'the Vault') : 'the Stairwell';
   if (s.goal.kind === 'wing') return `Reach ${where} with a Wing of ${s.goal.n} connected rooms of one colour.`;
   return `Reach ${where} holding ${goalTarget(s)} ${RES_NAMES[s.goal.res]}.`;
 }
@@ -567,7 +597,7 @@ function finish(s, won, why) {
   const ink = Math.round(s.placed * 0.6) + s.nightsCleared * 6 + (won ? 12 + s.deed * 4 : 0);
   s.result = { won, why, score: won ? s.score : 0, ink, nights: s.nightsCleared, drafts: s.drafts };
   say(s, won ? 'win' : 'lose');
-  log(s, won ? 'The Vault opens!' : `Run over: ${LOSS_TEXT[why]}`);
+  log(s, won ? (s.mode === 'story' ? 'The crime scene is reached!' : 'The Vault opens!') : `Run over: ${LOSS_TEXT[why]}`);
 }
 export const LOSS_TEXT = {
   steps: 'you ran out of Steps.',

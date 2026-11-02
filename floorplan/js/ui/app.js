@@ -1,7 +1,7 @@
 // UI layer: rendering + input only. All rules live in ../engine.
 import {
   newRun, act, openTargets, cellAt, gemCost, connectedSet, vaultConnected, roomDoors, drawCount, getMods, LOSS_TEXT,
-  goalTarget, goalProgress, goalMet, goalText, generateFloor, NIGHTS, biggestWing, RES_NAMES,
+  goalTarget, goalProgress, goalMet, goalText, generateFloor, NIGHTS, biggestWing, RES_NAMES, isVault,
 } from '../engine/engine.js';
 import { hashSeed } from '../engine/rng.js';
 import { OMENS, EVENTS, LANDINGS, WINGS, STEWARD_STORY } from '../data/nights.js';
@@ -213,6 +213,13 @@ function renderSelect() {
     <div class="mode-desc muted" style="font-size:13px;margin:-4px 0 8px">${isStory
       ? 'Build the blueprint, then reconstruct the crime scene. Each case is a locked-room mystery.'
       : 'Draft rooms and push through all three floors. See how far your strategy takes you.'}</div>
+    ${isStory ? `<div class="glass panel" style="padding:10px 14px"><div class="row" style="align-items:center;gap:8px"><span class="eyebrow grow">Crime scene access</span>
+      <div class="seg" style="flex:none">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([k, l]) =>
+        `<button class="btn small ${sel.difficulty === k ? 'on' : ''}" data-a="pickDiff" data-id="${k}">${l}</button>`).join('')}</div></div>
+      <div class="muted" style="font-size:12px;margin-top:4px">${
+        sel.difficulty === 'easy' ? 'Crime scene is interior, approachable from three sides.' :
+        sel.difficulty === 'normal' ? 'Crime scene is at the far wall with two ways in.' :
+        'Crime scene has one way in. The classic locked room.'}</div></div>` : ''}
     <div class="list">${mansions}</div>
     <div class="glass panel">
       <div class="deed-row">
@@ -374,7 +381,7 @@ function renderBoard(s) {
       if (cell && cell.blocked) { html += `<div class="cell blocked ${cell.collapsed ? 'collapsed' : ''}"></div>`; continue; }
       if (cell && cell.id) {
         const locks = [0, 1, 2, 3].map((d) => s.locks[`${r},${c},${d}`]);
-        const isGoal = cell.id === 'vault' || cell.id === 'stair';
+        const isGoal = isVault(cell.id) || cell.id === 'stair';
         const extra = isGoal
           ? `<g transform="translate(50 79)"><rect x="-17" y="-11" width="34" height="18" fill="${ready ? '#7cc47a' : '#fbf8ef'}" stroke="#1b1a1f" stroke-width="2.5"/><text y="4" text-anchor="middle" font-size="13" font-family="'Archivo Black', sans-serif" fill="#1b1a1f">${tgt}${gIcon}</text></g>` : '';
         const shifted = s.lastShift === r * s.w + c && ui.flash === 'dread' ? 'shifted' : '';
@@ -639,7 +646,7 @@ function renderOverlay() {
 function roomInfo(id) {
   const s = ui.run;
   const r = ROOMS[id];
-  if (id === 'vault' || id === 'stair') return { html: `<h2>${ROOMS[id].icon} ${ROOMS[id].name}</h2><p>${esc(goalText(s))}</p>` };
+  if (isVault(id) || id === 'stair') return { html: `<h2>${ROOMS[id].icon} ${ROOMS[id].name}</h2><p>${esc(goalText(s))}</p>` };
   if (id === 'entrance') return { html: '<h2>🚪 Entrance Hall</h2><p>Where every visit begins.</p>' };
   return { html: `<div style="display:flex;justify-content:center">${cardHtml(null, id, -1, { static: true }).replace('class="card ', 'style="width:180px;flex:none" class="card ')}</div>` };
 }
@@ -706,6 +713,7 @@ function handle(el, e) {
       save(); break;
     }
     case 'pickMode': ui.meta.last.mode = el.dataset.id; save(); break;
+    case 'pickDiff': ui.meta.last.difficulty = el.dataset.id; save(); break;
     case 'pickDeck': ui.meta.last.deckId = el.dataset.id; save(); break;
     case 'tab': ui.tab = el.dataset.id; break;
     case 'upg':
