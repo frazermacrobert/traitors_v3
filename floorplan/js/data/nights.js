@@ -118,3 +118,16 @@ export const STEWARD = {
   win: ['"The Vault. After all these years."'],
   lose: ['"The house keeps what it takes."', '"Another one for the walls."', '"Better luck next visit."'],
 };
+
+export const STEWARD_STORY = {
+  night1: ['The crime scene is upstairs. The house will not make it easy.', 'Someone died here. The rooms have been rearranged since.', 'Build your way up. The evidence is waiting.'],
+  night2: ['The second floor. Closer to the truth now.', 'The rooms are shifting. Someone does not want you to arrive.'],
+  night3: ['The crime scene is close. So are the answers.', 'Last floor. The locked room is just ahead.'],
+  act: ['The house is hiding something.', 'Someone does not want you investigating.', 'The walls are closing ranks.', 'Evidence does not destroy itself.'],
+  wing: ['A connected wing. Good for the investigation.', 'That architecture tells a story.'],
+  mystery: ['A clue, perhaps.', 'Evidence. Handle it carefully.'],
+  low: ['Running out of time, detective.', 'The trail is going cold.'],
+  clear: ['Upstairs. The scene is closer.', 'Keep moving. The house will not wait.'],
+  win: ['The crime scene. Now — reconstruct what happened.'],
+  lose: ['Case closed. Unsolved.', 'The house wins this round, detective.', 'Come back when you are ready to try again.'],
+};

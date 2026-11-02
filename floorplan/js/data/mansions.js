@@ -6,24 +6,28 @@
 export const MANSIONS = [
   {
     id: 'm1', name: 'Hollow House', blurb: 'Three quiet floors. The house is only half awake.',
+    caseName: 'The Hollow House Incident', caseBlurb: 'A body in an empty room. The simplest case — if you trust the walls.',
     w: 5, h: 7, nightSteps: [13, 12, 12], blocks: [1, 2, 3], mystery: [2, 2, 2], lockedCells: [0, 0, 1],
     lockChance: [0.04, 0.07, 0.1], dreadEvery: [8, 7, 7], omenTier: [1, 1, 2], discoveries: [1, 1, 0],
     goals: [{ kind: 'toll', res: 'gems', n: 3 }, { kind: 'toll', res: 'gems', n: 5 }, { kind: 'toll', res: 'gems', n: 8 }],
   },
   {
     id: 'm2', name: 'Crooked House', blurb: 'Rubble, odd angles, and a Steward who wants paying.',
+    caseName: 'The Crooked House Affair', caseBlurb: 'Nothing sits square here. The victim was found in a room that shouldn\'t exist.',
     w: 5, h: 8, nightSteps: [13, 13, 12], blocks: [2, 3, 4], mystery: [2, 2, 3], lockedCells: [0, 1, 1],
     lockChance: [0.06, 0.09, 0.11], dreadEvery: [8, 7, 7], omenTier: [1, 2, 2], discoveries: [1, 1, 1],
     goals: [{ kind: 'toll', res: 'gems', n: 4 }, { kind: 'toll', res: 'coins', n: 8 }, { kind: 'toll', res: 'gems', n: 8 }],
   },
   {
     id: 'm3', name: 'Locked Wing', blurb: 'Keys matter here. So does the shape of what you build.',
+    caseName: 'The Locked Wing Mystery', caseBlurb: 'Every door was bolted from the inside. So how did the killer get out?',
     w: 5, h: 8, nightSteps: [14, 14, 13], blocks: [2, 3, 4], mystery: [2, 3, 3], lockedCells: [1, 1, 2],
     lockChance: [0.08, 0.1, 0.12], dreadEvery: [8, 7, 7], omenTier: [2, 2, 3], discoveries: [1, 1, 1],
     goals: [{ kind: 'wing', n: 3 }, { kind: 'toll', res: 'keys', n: 2 }, { kind: 'toll', res: 'gems', n: 9 }],
   },
   {
     id: 'm4', name: 'Flooded Manor', blurb: 'Wide, wet and wide awake.',
+    caseName: 'The Flooded Manor Case', caseBlurb: 'The water rose overnight. Someone made sure the evidence would sink with it.',
     w: 6, h: 9, nightSteps: [15, 15, 14], blocks: [4, 5, 7], mystery: [3, 3, 3], lockedCells: [1, 1, 2],
     lockChance: [0.08, 0.1, 0.12], dreadEvery: [8, 7, 6], omenTier: [2, 3, 3], discoveries: [1, 1, 1],
     goals: [{ kind: 'wing', n: 3 }, { kind: 'toll', res: 'coins', n: 10 }, { kind: 'toll', res: 'gems', n: 10 }],

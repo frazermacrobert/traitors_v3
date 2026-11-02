@@ -8,7 +8,7 @@
 import { ROOMS, SHAPES, RARITIES, isDraftable } from '../data/rooms.js';
 import { HEIRLOOMS, MAX_HEIRLOOMS } from '../data/heirlooms.js';
 import { MANSIONS, DEEDS, DECKS, PERKS } from '../data/mansions.js';
-import { OMENS, HOUSE_ACTS, EVENTS, LANDINGS, WINGS, STEWARD } from '../data/nights.js';
+import { OMENS, HOUSE_ACTS, EVENTS, LANDINGS, WINGS, STEWARD, STEWARD_STORY } from '../data/nights.js';
 import { rand, shuffle, hashSeed } from './rng.js';
 import { UPGRADES } from '../data/progression.js';
 
@@ -74,18 +74,22 @@ export function randomRoom(s, pred = () => true) {
 }
 
 function log(s, msg) { s.logCount = (s.logCount || 0) + 1; s.log.push(msg); if (s.log.length > 30) s.log.shift(); }
-function say(s, mood) { const lines = STEWARD[mood]; if (lines) s.steward = pick(s, lines); }
+function say(s, mood) {
+  const bank = s.mode === 'story' ? STEWARD_STORY : STEWARD;
+  const lines = bank[mood] || STEWARD[mood];
+  if (lines) s.steward = pick(s, lines);
+}
 function mk(id, rot, preset = false) { return { id, rot, doors: roomDoors(id, rot), preset }; }
 
 // ---------- setup ----------
 export function newRun({
   seed = Date.now(), mansionId = 'm1', deed = 0, deckId = 'standard', unlockedRooms = [], perks = [],
-  upgrades = {}, extraCards = [], startHeirloom = null, discoveredRooms = [],
+  upgrades = {}, extraCards = [], startHeirloom = null, discoveredRooms = [], mode = 'endless',
 } = {}) {
   const m = mansionById(mansionId);
   if (!m) throw new Error(`Unknown mansion ${mansionId}`);
   const s = {
-    v: 2, seed, rng: hashSeed(seed), mansionId, deed, deckId, night: 0,
+    v: 2, seed, rng: hashSeed(seed), mansionId, deed, deckId, mode, night: 0,
     w: m.w, h: m.h, cells: [], locks: {}, lockedCells: {}, mystery: {}, entrance: null, vault: null, goal: null, omen: null,
     res: { steps: 0, gems: 1, keys: 1, coins: 0, rerolls: 1 },
     deck: [], discard: [], heirlooms: [], counters: {}, pool: [], lastPlaced: null,

@@ -4,7 +4,7 @@ import {
   goalTarget, goalProgress, goalMet, goalText, generateFloor, NIGHTS, biggestWing, RES_NAMES,
 } from '../engine/engine.js';
 import { hashSeed } from '../engine/rng.js';
-import { OMENS, EVENTS, LANDINGS, WINGS } from '../data/nights.js';
+import { OMENS, EVENTS, LANDINGS, WINGS, STEWARD_STORY } from '../data/nights.js';
 import { sfx, setSound, soundOn } from './sound.js';
 import {
   migrateMeta, applyResult, buyUnlock, mansionUnlocked, availableDecks, runOptions, ownedOf,
@@ -142,10 +142,10 @@ function renderTitle() {
   return `<section class="screen"><div class="title-wrap">
     <div class="title-tiles" aria-hidden="true">${tiles}</div>
     <div class="logo">Floor&shy;plan</div>
-    <div class="dimline">three floors · one vault</div>
-    <p class="tag">Grandfather's house rebuilds itself every night. Draft its rooms, survive three floors, and open the Vault.</p>
+    <div class="dimline">three floors · one locked room</div>
+    <p class="tag">Draft rooms, survive three floors, and reach the locked room at the heart of the house.</p>
     <div class="title-buttons">
-      ${ui.run ? `<button class="btn primary" data-a="resume">Continue · Night ${ui.run.night} of ${NIGHTS}</button>` : ''}
+      ${ui.run ? `<button class="btn primary" data-a="resume">Continue · ${ui.run.mode === 'story' ? 'Scene' : 'Night'} ${ui.run.night} of ${NIGHTS}</button>` : ''}
       <button class="btn ${ui.run ? '' : 'primary'}" data-a="go" data-to="select">${ui.run ? 'New run' : m.runs ? 'Continue game' : 'New game'}</button>
       <button class="btn ${canAffordSomething(m) ? 'gold' : ''}" data-a="go" data-to="archive">Archive · ${icon('ink')} ${m.ink} Ink${canAffordSomething(m) ? ' · upgrade ready' : ''}</button>
       <div class="row"><button class="btn ghost grow" data-a="help">How to play</button><button class="btn ghost grow" data-a="settings">Settings</button></div>
@@ -182,17 +182,20 @@ const goalChip = (g) => (g.kind === 'wing' ? `${icon('wing')}${g.n}` : `${RES_IC
 
 function renderSelect() {
   const sel = ui.meta.last;
+  const isStory = sel.mode === 'story';
   const mansions = MANSIONS.map((m, i) => {
     const open = mansionUnlocked(ui.meta, i);
     const st = ui.meta.mansions[m.id];
+    const mName = isStory ? m.caseName : m.name;
+    const mBlurb = isStory ? m.caseBlurb : m.blurb;
     return `<button class="glass panel mansion ${open ? '' : 'locked'} ${sel.mansionId === m.id ? 'selected' : ''}" ${open ? `data-a="pickMansion" data-id="${m.id}"` : 'disabled'}>
       ${minimap(m)}
       <div class="grow" style="display:flex;flex-direction:column;gap:6px">
-        <div class="eyebrow">Mansion ${i + 1} · ${m.w}×${m.h}</div>
-        <h3>${esc(m.name)}</h3>
-        <div class="muted" style="font-size:13px">${open ? esc(m.blurb) : `Beat ${esc(MANSIONS[i - 1].name)} to unlock.`}</div>
+        <div class="eyebrow">${isStory ? `Case ${i + 1}` : `Mansion ${i + 1}`} · ${m.w}×${m.h}</div>
+        <h3>${esc(mName)}</h3>
+        <div class="muted" style="font-size:13px">${open ? esc(mBlurb) : `Beat ${esc(isStory ? MANSIONS[i - 1].caseName : MANSIONS[i - 1].name)} to unlock.`}</div>
         ${open ? `<div class="row wrap">
-          <span class="chip">🌙 3 Nights · ${m.goals.map(goalChip).join(' → ')}</span>
+          <span class="chip">${isStory ? '🔍' : '🌙'} 3 ${isStory ? 'Scenes' : 'Nights'} · ${m.goals.map(goalChip).join(' → ')}</span>
           <span class="chip curse">Omens ${'✸'.repeat(Math.max(...m.omenTier))}</span>
           ${st.wins ? `<span class="chip good">🏆 ${st.wins} · best ${st.best}</span>` : ''}
         </div>` : ''}
@@ -203,8 +206,13 @@ function renderSelect() {
   const deed = Math.min(sel.deed, st.maxDeed);
   const deedText = DEEDS.slice(1, deed + 1).map((d) => `<li>${esc(d.text)}</li>`).join('');
   const decks = availableDecks(ui.meta).map((id) => `<button class="btn small ${sel.deckId === id ? 'on' : ''}" data-a="pickDeck" data-id="${id}">${esc(DECKS[id].name)}</button>`).join('');
+  const modeLabel = isStory ? 'Choose a case' : 'Choose a mansion';
   return `<section class="screen">
-    <div class="topbar"><button class="icon-btn" data-a="go" data-to="title" aria-label="Back">←</button><h2>Choose a mansion</h2></div>
+    <div class="topbar"><button class="icon-btn" data-a="go" data-to="title" aria-label="Back">←</button><h2>${modeLabel}</h2></div>
+    <div class="seg mode-seg"><button class="btn small ${!isStory ? 'on' : ''}" data-a="pickMode" data-id="endless">Endless</button><button class="btn small ${isStory ? 'on' : ''}" data-a="pickMode" data-id="story">Story</button></div>
+    <div class="mode-desc muted" style="font-size:13px;margin:-4px 0 8px">${isStory
+      ? 'Build the blueprint, then reconstruct the crime scene. Each case is a locked-room mystery.'
+      : 'Draft rooms and push through all three floors. See how far your strategy takes you.'}</div>
     <div class="list">${mansions}</div>
     <div class="glass panel">
       <div class="deed-row">
@@ -218,7 +226,7 @@ function renderSelect() {
     <div class="glass panel"><h3 style="margin-bottom:10px">Plans</h3><div class="seg">${decks}</div>
       <div class="muted" style="font-size:13px;margin-top:10px">${esc(DECKS[sel.deckId].text)}</div></div>
     ${loadoutPanel()}
-    <button class="btn primary" data-a="start">Enter ${esc(MANSIONS.find((m) => m.id === sel.mansionId).name)}</button>
+    <button class="btn primary" data-a="start">${isStory ? 'Investigate' : 'Enter'} ${esc(isStory ? MANSIONS.find((m) => m.id === sel.mansionId).caseName : MANSIONS.find((m) => m.id === sel.mansionId).name)}</button>
   </section>`;
 }
 
@@ -317,6 +325,7 @@ function renderDiscoveries() {
 function renderRun() {
   const s = ui.run;
   const m = MANSIONS.find((x) => x.id === s.mansionId);
+  const isStory = s.mode === 'story';
   const tgt = goalTarget(s);
   const gr = s.goal.kind === 'toll' ? s.goal.res : null;
   const pill = (k, ic) => {
@@ -332,7 +341,7 @@ function renderRun() {
   return `<div class="run">
     <div class="run-bar">
       <button class="menu-btn" data-a="menu" aria-label="Menu">${icon('menu')}</button>
-      <span class="nb" data-a="effects"><span class="emo">${OMENS[s.omen].icon}</span>N${s.night}</span>
+      <span class="nb" data-a="effects"><span class="emo">${OMENS[s.omen].icon}</span>${isStory ? 'S' : 'N'}${s.night}</span>
       <span class="pill steps ${s.res.steps <= 3 ? 'low' : ''} ${ui.bumped.includes('steps') ? 'bump' : ''}">${icon('steps')}${s.res.steps}</span>
       ${pill('gems', icon('gems'))}${pill('keys', icon('keys'))}${pill('coins', icon('coins'))}
       <span class="pill rerolls ${ui.bumped.includes('rerolls') ? 'bump' : ''}">${icon('rerolls')}${s.res.rerolls}</span>
@@ -342,7 +351,7 @@ function renderRun() {
     </div>
     <div class="dread-slim ${dLeft <= 2 ? 'near' : ''}" data-a="dreadinfo" role="button"><span class="df" style="width:${dPct}%"></span></div>
     <div class="board-wrap"><div class="sheet"><div class="board ${ui.flash ? `flash-${ui.flash}` : ''}" style="--cols:${s.w}">${renderBoard(s)}</div>
-      <div class="titleblock"><span>Floor ${s.night} of ${NIGHTS} · ${esc(m.name)}</span><span>scale 1:50</span></div></div></div>
+      <div class="titleblock"><span>${isStory ? 'Scene' : 'Floor'} ${s.night} of ${NIGHTS} · ${esc(isStory ? m.caseName : m.name)}</span><span>scale 1:50</span></div></div></div>
     <div class="tray">${renderTray(s)}</div>
   </div>`;
 }
@@ -413,6 +422,7 @@ function cardHtml(s, id, i, { static: isStatic = false } = {}) {
 
 function renderTray(s) {
   const p = s.pending;
+  const isStory = s.mode === 'story';
   switch (s.phase) {
     case 'door': {
       const tgt = goalTarget(s);
@@ -422,7 +432,7 @@ function renderTray(s) {
       const gl = s.goal.kind === 'wing'
         ? `${icon('wing')} Wing ${prog}/${tgt}`
         : `${RES_ICON2[s.goal.res]} ${prog}/${tgt}`;
-      const hint = s.drafts < 3 ? `<div class="hint">Tap a red doorway to draft.${drawCount(s) !== 3 ? ` Next: <b>${drawCount(s)}</b> cards.` : ''}</div>` : '';
+      const hint = s.drafts < 3 ? `<div class="hint">Tap a ${isStory ? 'marked' : 'red'} doorway to draft.${drawCount(s) !== 3 ? ` Next: <b>${drawCount(s)}</b> cards.` : ''}</div>` : '';
       return `<div class="goal-line">${where}<span class="grow">${gl} ${met ? '<b class="met-tag">✓</b>' : ''}</span><button class="btn small ghost" data-a="effects" style="min-height:34px;padding:4px 10px">Effects · ${activeEffects(s).count}</button></div>${hint}`;
     }
     case 'card': {
@@ -460,9 +470,9 @@ function renderTray(s) {
     case 'landing': {
       const opts = s.landing.map((id, i) => { const l = LANDINGS.find((x) => x.id === id); return `<div class="card heir static" data-a="land" data-i="${i}" role="button" tabindex="0"><div class="card-in">
         <div class="art"><span class="emo">${l.icon}</span></div><div class="body"><div class="nm">${esc(l.name)}</div><div class="tx">${esc(l.text)}</div></div></div></div>`; }).join('');
-      return `<div class="tray-head"><h3>🌙 Night ${s.night} cleared</h3></div>
+      return `<div class="tray-head"><h3>${isStory ? `🔍 Scene ${s.night} cleared` : `🌙 Night ${s.night} cleared`}</h3></div>
         <div class="cards">${opts}</div>
-        <div class="hint" style="font-size:12px">Carry ${Math.floor(s.res.steps / 2)} Steps + your deck up to Night ${s.night + 1}.</div>`;
+        <div class="hint" style="font-size:12px">Carry ${Math.floor(s.res.steps / 2)} Steps + your deck up to ${isStory ? 'Scene' : 'Night'} ${s.night + 1}.</div>`;
     }
     case 'discovery': {
       const cards = s.discoveryOffer.map((id, i) => cardHtml(null, id, i, { static: true }).replace('class="card ', `class="card " data-a="discPick" data-i="${i}" role="button" tabindex="0" style="cursor:pointer" `)).join('');
@@ -486,7 +496,7 @@ function renderTray(s) {
         <div class="hint" style="font-size:12px">Heirlooms last until this run ends. You can hold ${MAX_HEIRLOOMS}.</div>`;
     }
     default:
-      return `<div class="hint">${s.result?.won ? 'The Vault is open.' : 'The run is over.'}</div>
+      return `<div class="hint">${s.result?.won ? (isStory ? 'The crime scene is open.' : 'The Vault is open.') : (isStory ? 'Case closed. Unsolved.' : 'The run is over.')}</div>
         <button class="btn primary" data-a="showResult">See results</button>`;
   }
 }
@@ -526,10 +536,12 @@ function renderOverlay() {
   if (!o) return '';
   const sheet = (inner, mid = false) => `<div class="overlay ${mid ? 'mid' : ''}" data-a="close"><div class="modal ${mid ? 'center-modal' : ''}" data-stop>${inner}</div></div>`;
   if (o === 'help') {
+    const runMode = ui.run?.mode || ui.meta.last.mode || 'endless';
+    const isSH = runMode === 'story';
     return sheet(`<h2>How to play</h2>
       <ul>
-        <li>A run is <b>three Nights</b>. Each Night the house builds a new floor. Reach the <b>🪜 Stairwell</b>; on Night 3, the <b>👑 Vault</b>.</li>
-        <li>Each Night has a <b>goal</b> (hold enough Gems, Coins or Keys, or build a Wing) and an <b>Omen</b> that bends the rules.</li>
+        <li>A run is <b>three ${isSH ? 'Scenes' : 'Nights'}</b>. Each ${isSH ? 'Scene' : 'Night'} the house builds a new floor. Reach the <b>🪜 Stairwell</b>; on ${isSH ? 'Scene' : 'Night'} 3, the <b>👑 ${isSH ? 'Crime Scene' : 'Vault'}</b>.</li>
+        <li>Each ${isSH ? 'Scene' : 'Night'} has a <b>goal</b> (hold enough Gems, Coins or Keys, or build a Wing) and an <b>Omen</b> that bends the rules.</li>
         <li>Tap a glowing doorway. You're dealt <b>3 rooms</b>. Pick one; the others go to the discard pile.</li>
         <li><b>Rotate</b> it so its doors lead where you want. It must connect back to the doorway.</li>
         <li>Each draft costs <b>1 👣 Step</b>. Chambers (purple) give Steps back. Run out and the run ends.</li>
@@ -592,13 +604,17 @@ function renderOverlay() {
   if (o === 'result') {
     const s = ui.run;
     const r = s.result;
+    const isStory = s.mode === 'story';
+    const wonTitle = isStory ? 'Crime scene reached!' : 'Vault opened!';
+    const wonSub = isStory ? 'You reached the locked room.' : 'You reached the Vault.';
+    const lostTitle = isStory ? 'Case unsolved' : 'The house wins';
     return `<div class="overlay mid"><div class="modal center-modal">
-      <div class="big-result">${r.won ? 'Opened.' : 'Lost.'}</div>
-      <h2 class="center">${r.won ? 'Vault opened!' : 'The house wins'}</h2>
-      <p class="center muted" style="margin:0">${r.won ? 'You reached the Vault.' : esc(LOSS_TEXT[r.why] || '')}</p>
+      <div class="big-result">${r.won ? (isStory ? 'Solved.' : 'Opened.') : (isStory ? 'Unsolved.' : 'Lost.')}</div>
+      <h2 class="center">${r.won ? wonTitle : lostTitle}</h2>
+      <p class="center muted" style="margin:0">${r.won ? wonSub : esc(LOSS_TEXT[r.why] || '')}</p>
       <div class="kv">
         <span>Rooms drafted</span><b>${s.placed}</b>
-        <span>Nights cleared</span><b>${r.nights}/${NIGHTS}</b>
+        <span>${isStory ? 'Scenes' : 'Nights'} cleared</span><b>${r.nights}/${NIGHTS}</b>
         ${r.won ? `<span>Score</span><b>${r.score}</b>` : ''}
         <span>Ink earned</span><b>${icon('ink')} ${r.ink}</b>
       </div>
@@ -689,6 +705,7 @@ function handle(el, e) {
       ui.meta.last.deed = Math.max(0, Math.min(max, ui.meta.last.deed + Number(el.dataset.d)));
       save(); break;
     }
+    case 'pickMode': ui.meta.last.mode = el.dataset.id; save(); break;
     case 'pickDeck': ui.meta.last.deckId = el.dataset.id; save(); break;
     case 'tab': ui.tab = el.dataset.id; break;
     case 'upg':
