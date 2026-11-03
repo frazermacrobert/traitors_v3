@@ -49,8 +49,8 @@ export const FAMILY_COLORS = {
 export const FAMILY_EFFECTS = {
   Garden:      { type: 'lush', desc: 'Rich in items' },
   Library:     { type: 'clue', desc: 'Reveals a neighbor clue' },
-  Kitchen:     { type: 'food', desc: 'Always has food' },
-  Bedroom:     { type: 'energy', value: 2, desc: 'Rest: +2 energy' },
+  Kitchen:     { type: 'food', desc: '+2 energy (food)' },
+  Bedroom:     { type: 'energy', value: 2, desc: '+2 energy (rest)' },
   Gallery:     { type: 'costly', value: 2, desc: 'Draining: costs 2 energy' },
   Study:       { type: 'clue', desc: 'Reveals a neighbor clue' },
   Hall:        { type: 'passage', desc: 'Many doors' },
@@ -65,21 +65,21 @@ export const FAMILY_EFFECTS = {
 };
 
 export const ITEM_TABLES = {
-  Garden:      [{ item: 'gem', chance: 0.45 }, { item: 'food', chance: 0.25 }, { item: 'coin', chance: 0.15 }],
-  Library:     [{ item: 'coin', chance: 0.25 }],
-  Kitchen:     [{ item: 'coin', chance: 0.30 }],
-  Bedroom:     [{ item: 'food', chance: 0.30 }, { item: 'key', chance: 0.15 }],
-  Gallery:     [{ item: 'coin', chance: 0.10 }],
-  Study:       [{ item: 'coin', chance: 0.20 }, { item: 'gem', chance: 0.10 }],
-  Hall:        [{ item: 'coin', chance: 0.30 }],
-  Cellar:      [{ item: 'coin', chance: 0.30 }, { item: 'food', chance: 0.15 }],
-  Tower:       [{ item: 'key', chance: 0.20 }, { item: 'coin', chance: 0.15 }],
-  Chapel:      [{ item: 'key', chance: 0.20 }, { item: 'coin', chance: 0.15 }],
-  Armory:      [{ item: 'coin', chance: 0.10 }],
-  Treasury:    [{ item: 'gem', chance: 0.50 }, { item: 'coin', chance: 0.30 }],
-  Ballroom:    [{ item: 'coin', chance: 0.30 }, { item: 'food', chance: 0.10 }],
-  Observatory: [{ item: 'gem', chance: 0.15 }, { item: 'coin', chance: 0.20 }],
-  Dungeon:     [{ item: 'key', chance: 0.30 }, { item: 'gem', chance: 0.15 }],
+  Garden:      [{ item: 'gem', chance: 0.50 }, { item: 'coin', chance: 0.40 }, { item: 'food', chance: 0.30 }],
+  Library:     [{ item: 'coin', chance: 0.40 }, { item: 'gem', chance: 0.15 }],
+  Kitchen:     [{ item: 'coin', chance: 0.40 }, { item: 'gem', chance: 0.10 }],
+  Bedroom:     [{ item: 'food', chance: 0.35 }, { item: 'key', chance: 0.20 }, { item: 'coin', chance: 0.20 }],
+  Gallery:     [{ item: 'coin', chance: 0.30 }, { item: 'gem', chance: 0.10 }],
+  Study:       [{ item: 'coin', chance: 0.35 }, { item: 'gem', chance: 0.20 }],
+  Hall:        [{ item: 'coin', chance: 0.40 }, { item: 'gem', chance: 0.15 }],
+  Cellar:      [{ item: 'coin', chance: 0.40 }, { item: 'key', chance: 0.15 }],
+  Tower:       [{ item: 'key', chance: 0.30 }, { item: 'coin', chance: 0.25 }],
+  Chapel:      [{ item: 'key', chance: 0.30 }, { item: 'coin', chance: 0.25 }],
+  Armory:      [{ item: 'coin', chance: 0.25 }, { item: 'key', chance: 0.15 }],
+  Treasury:    [{ item: 'gem', chance: 0.60 }, { item: 'coin', chance: 0.40 }],
+  Ballroom:    [{ item: 'coin', chance: 0.40 }, { item: 'gem', chance: 0.15 }],
+  Observatory: [{ item: 'gem', chance: 0.25 }, { item: 'coin', chance: 0.30 }],
+  Dungeon:     [{ item: 'key', chance: 0.40 }, { item: 'gem', chance: 0.20 }],
 };
 
 const ICONS = {
@@ -106,36 +106,36 @@ function room(name, family, shape, cost, rarity, text) {
 
 export const ROOMS = [
   // Gardens (green — rich in items)
-  room('Rose Garden',    'Garden',  'L', 1, 'common', 'Thorns guard beauty'),
+  room('Herb Garden',    'Garden',  'L', 0, 'common', 'Fragrant and useful'),
+  room('Rose Garden',    'Garden',  'T', 1, 'uncommon', 'Thorns guard beauty'),
+  room('Greenhouse',     'Garden',  'I', 0, 'common', 'Glass and greenery'),
+  room('Topiary Court',  'Garden',  'X', 2, 'rare', 'Sculpted nature'),
   room('Hedge Maze',     'Garden',  'T', 2, 'uncommon', 'Which way is out?'),
-  room('Greenhouse',     'Garden',  'I', 1, 'common', 'Glass and greenery'),
-  room('Topiary Court',  'Garden',  'X', 3, 'rare', 'Sculpted nature'),
-  room('Herb Patch',     'Garden',  'D', 1, 'common', 'Fragrant and useful'),
 
   // Libraries (blue — reveal clues)
   room('Reading Room',   'Library', 'L', 0, 'common', 'Quiet, please'),
-  room('Archive',        'Library', 'I', 1, 'uncommon', 'Dusty records'),
-  room('Map Room',       'Library', 'T', 2, 'uncommon', 'Charts and atlases'),
-  room('Grand Library',  'Library', 'X', 3, 'rare', 'Floor to ceiling'),
+  room('Archive',        'Library', 'T', 0, 'common', 'Dusty records'),
+  room('Map Room',       'Library', 'I', 1, 'uncommon', 'Charts and atlases'),
+  room('Grand Library',  'Library', 'X', 2, 'rare', 'Floor to ceiling'),
   room('Scriptorium',    'Library', 'D', 0, 'common', 'Ink-stained desks'),
 
   // Kitchens (warm — guaranteed food)
   room('Pantry',         'Kitchen', 'D', 0, 'common', 'Well-stocked shelves'),
-  room('Scullery',       'Kitchen', 'I', 0, 'common', 'Scrub and rinse'),
-  room('Great Kitchen',  'Kitchen', 'T', 1, 'uncommon', 'Fires always burning'),
-  room('Wine Cellar',    'Kitchen', 'L', 1, 'uncommon', 'Vintage collection'),
+  room('Scullery',       'Kitchen', 'L', 0, 'common', 'Scrub and rinse'),
+  room('Great Kitchen',  'Kitchen', 'T', 0, 'common', 'Fires always burning'),
+  room('Wine Cellar',    'Kitchen', 'I', 0, 'common', 'Vintage collection'),
   room('Feast Hall',     'Kitchen', 'X', 2, 'rare', 'A table for fifty'),
 
   // Bedrooms (purple — energy from rest)
-  room('Guest Room',     'Bedroom', 'D', 0, 'common', 'Modest but warm'),
-  room('Master Suite',   'Bedroom', 'L', 1, 'uncommon', 'Fit for the lord'),
+  room('Guest Room',     'Bedroom', 'L', 0, 'common', 'Modest but warm'),
+  room('Master Suite',   'Bedroom', 'T', 1, 'uncommon', 'Fit for the lord'),
   room('Servant Quarters','Bedroom','I', 0, 'common', 'Simple bunks'),
-  room('Royal Chamber',  'Bedroom', 'T', 2, 'rare', 'Crown on the pillow'),
+  room('Royal Chamber',  'Bedroom', 'X', 2, 'rare', 'Crown on the pillow'),
   room('Nursery',        'Bedroom', 'D', 0, 'common', 'Cradle and toys'),
 
   // Gallery (red — costly but well-connected)
   room('Portrait Hall',  'Gallery', 'I', 0, 'common', 'Ancestors watching'),
-  room('Sculpture Wing', 'Gallery', 'L', 1, 'uncommon', 'Marble and bronze'),
+  room('Sculpture Wing', 'Gallery', 'L', 0, 'common', 'Marble and bronze'),
   room('Exhibition',     'Gallery', 'T', 1, 'uncommon', 'Rotating works'),
   room('Grand Gallery',  'Gallery', 'X', 2, 'rare', 'A cathedral of art'),
 
@@ -144,44 +144,46 @@ export const ROOMS = [
   room('Smoking Room',   'Study',   'L', 0, 'common', 'Leather and oak'),
   room('War Room',       'Study',   'T', 1, 'uncommon', 'Strategy and maps'),
 
-  // Halls (neutral — many doors)
+  // Halls (neutral — many doors, always free)
   room('Entrance Hall',  'Hall',    'T', 0, 'common', 'Welcome home'),
-  room('Grand Foyer',    'Hall',    'X', 1, 'uncommon', 'The heart of the mansion'),
+  room('Grand Foyer',    'Hall',    'X', 0, 'common', 'The heart of the mansion'),
   room('Long Corridor',  'Hall',    'I', 0, 'common', 'Echoing footsteps'),
   room('Vestibule',      'Hall',    'L', 0, 'common', 'Between worlds'),
+  room('Gallery Walk',   'Hall',    'T', 0, 'common', 'Portraits line the way'),
 
-  // Cellar
+  // Cellar (+1 energy)
   room('Root Cellar',    'Cellar',  'D', 0, 'common', 'Cool and dark'),
-  room('Crypt',          'Cellar',  'L', 1, 'uncommon', 'Rest in peace'),
+  room('Crypt',          'Cellar',  'L', 0, 'common', 'Rest in peace'),
   room('Tunnels',        'Cellar',  'I', 0, 'common', 'Where do they lead?'),
 
   // Tower (oracle)
-  room('Lookout',        'Tower',   'D', 1, 'uncommon', 'See for miles'),
+  room('Lookout',        'Tower',   'D', 0, 'common', 'See for miles'),
   room('Bell Tower',     'Tower',   'I', 1, 'uncommon', 'Ring at midnight'),
   room('Turret',         'Tower',   'L', 0, 'common', 'Spiral stair'),
 
   // Chapel (oracle)
   room('Prayer Room',    'Chapel',  'D', 0, 'common', 'Candlelit silence'),
-  room('Nave',           'Chapel',  'I', 1, 'uncommon', 'Stained glass light'),
+  room('Nave',           'Chapel',  'I', 0, 'common', 'Stained glass light'),
   room('Sanctuary',      'Chapel',  'T', 2, 'rare', 'Sacred ground'),
 
   // Armory (red — costly but well-connected)
   room('Weapon Rack',    'Armory',  'D', 0, 'common', 'Swords and shields'),
-  room('Training Yard',  'Armory',  'L', 1, 'uncommon', 'Practice makes perfect'),
+  room('Training Yard',  'Armory',  'L', 0, 'common', 'Practice makes perfect'),
   room('Arsenal',        'Armory',  'T', 1, 'uncommon', 'Ready for siege'),
 
-  // Treasury (gems)
-  room('Vault',          'Treasury','D', 1, 'uncommon', 'Locked tight'),
-  room('Counting Room',  'Treasury','L', 1, 'uncommon', 'Coins and ledgers'),
-  room('Crown Jewels',   'Treasury','T', 3, 'rare', 'Priceless gems'),
+  // Treasury (gems — the key resource family)
+  room('Coin Purse',     'Treasury','D', 0, 'common', 'A few coins inside'),
+  room('Vault',          'Treasury','L', 1, 'uncommon', 'Locked tight'),
+  room('Counting Room',  'Treasury','T', 1, 'uncommon', 'Coins and ledgers'),
+  room('Crown Jewels',   'Treasury','X', 3, 'rare', 'Priceless gems'),
 
-  // Ballroom
+  // Ballroom (+1 energy)
   room('Dance Floor',    'Ballroom','I', 0, 'common', 'Music fills the air'),
   room('Grand Ballroom', 'Ballroom','X', 2, 'rare', 'Chandeliers ablaze'),
   room('Music Room',     'Ballroom','L', 0, 'common', 'Piano and strings'),
 
   // Observatory (clue)
-  room('Star Chamber',   'Observatory','D', 1, 'uncommon', 'Maps of the sky'),
+  room('Star Chamber',   'Observatory','D', 0, 'common', 'Maps of the sky'),
   room('Telescope Room', 'Observatory','L', 1, 'uncommon', 'Gaze at the heavens'),
 
   // Dungeon (keys)

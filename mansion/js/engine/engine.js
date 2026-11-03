@@ -273,7 +273,7 @@ function generateDraft(c, r, state) {
   state.run.rngState = Math.floor(rng() * 2147483647);
 
   const depth = ENTRANCE_ROW - r; // 0 at entrance, up to 5
-  const required = getRequiredDoors(c, r, state);
+  const placedCount = Object.keys(state.run.placed).length + Object.keys(state.locked).length;
 
   // Filter room pool to rooms that can physically connect
   const usedIds = new Set([...Object.values(state.locked).map(c => c.roomId),
@@ -286,92 +286,148 @@ function generateDraft(c, r, state) {
     for (let rot = 0; rot < 4; rot++) {
       if (canPlace(roomId, rot, c, r, state)) {
         fitting.push({ roomId, rot, room });
-        break; // one valid rotation is enough to include
+        break;
       }
     }
   }
 
   if (fitting.length === 0) return null;
 
-  // Weight by depth, rarity, and door count
+  // Weight rooms — priorities: multi-door shapes, free rooms early, resource rooms
   const weighted = fitting.map(f => {
     let w = 1;
     const bpCell = state.blueprint.cells.find(cell => cell.c === c && cell.r === r);
+    const doorCount = f.room.doorCount || SHAPES[f.room.shape]?.count || 1;
+    const effect = FAMILY_EFFECTS[f.room.family];
 
-    // Rooms whose blueprint row matches this row get a boost
+    // Blueprint match
     if (bpCell && bpCell.roomId === f.roomId) w += 2;
 
-    // Rarity weighting by depth
-    if (f.room.rarity === 'common') w += Math.max(0, 3 - depth);
+    // --- Door count is king: multi-door rooms keep the game alive ---
+    if (doorCount === 1) {
+      // Dead-ends almost never appear in first 5 placements
+      if (placedCount < 5) w *= 0.1;
+      else w += depth >= 3 ? 1 : 0;
+    } else if (doorCount === 2) {
+      w += 2;
+    } else if (doorCount === 3) {
+      w += depth <= 3 ? 6 : 3;
+    } else if (doorCount >= 4) {
+      w += depth <= 3 ? 8 : 4;
+    }
+
+    // --- Resource rooms should appear early to bootstrap the economy ---
+    if (placedCount < 4) {
+      // First 4 placements: strongly boost resource-givers
+      if (effect && (effect.type === 'gem' || effect.type === 'key' || effect.type === 'food' || effect.type === 'energy')) {
+        w += 4;
+      }
+      if (effect && effect.type === 'lush') w += 3; // Garden — rich items
+    } else if (placedCount < 8) {
+      if (effect && (effect.type === 'gem' || effect.type === 'key')) w += 2;
+    }
+
+    // Free rooms get a moderate boost (but not so much they crowd out everything)
+    if (f.room.cost === 0) w += 2;
+
+    // Rarity by depth
+    if (f.room.rarity === 'common') w += Math.max(0, 2 - depth * 0.3);
     if (f.room.rarity === 'uncommon') w += 1;
     if (f.room.rarity === 'rare') w += depth * 0.5;
 
-    // Prefer free rooms more often (cost 0 gems)
-    if (f.room.cost === 0) w += 1;
-
-    // Strongly favor multi-door rooms to prevent early dead ends
-    const doorCount = f.room.doorCount || SHAPES[f.room.shape]?.count || 1;
-    w += (doorCount - 1) * 1.5;
-    // Extra boost for branching rooms near entrance
-    if (depth <= 2 && doorCount >= 3) w += 2;
-
-    return { ...f, weight: w };
+    return { ...f, weight: Math.max(w, 0.5) };
   });
 
-  const totalWeight = weighted.reduce((s, w) => s + w.weight, 0);
-
-  function pickWeighted() {
-    let roll = rng() * totalWeight;
-    for (const w of weighted) {
+  function pickWeighted(pool) {
+    const total = pool.reduce((s, w) => s + w.weight, 0);
+    let roll = rng() * total;
+    for (const w of pool) {
       roll -= w.weight;
       if (roll <= 0) return w;
     }
-    return weighted[weighted.length - 1];
+    return pool[pool.length - 1];
   }
 
   const options = [];
   const pickedIds = new Set();
 
-  // Slot 1 & 2: weighted picks
-  for (let i = 0; i < 2 && options.length < 2; i++) {
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const pick = pickWeighted();
-      if (!pickedIds.has(pick.roomId)) {
-        pickedIds.add(pick.roomId);
-        options.push(pick);
-        break;
-      }
-    }
+  // Slot 1: best weighted pick
+  const pick1 = pickWeighted(weighted);
+  pickedIds.add(pick1.roomId);
+  options.push(pick1);
+
+  // Slot 2: weighted from remainder
+  let remaining = weighted.filter(w => !pickedIds.has(w.roomId));
+  if (remaining.length > 0) {
+    const pick2 = pickWeighted(remaining);
+    pickedIds.add(pick2.roomId);
+    options.push(pick2);
   }
 
-  // Slot 3: skew rare / higher cost
-  const rarePool = weighted.filter(w => !pickedIds.has(w.roomId) && (w.room.rarity === 'rare' || w.room.rarity === 'uncommon'));
-  if (rarePool.length > 0) {
-    const pick = rarePool[Math.floor(rng() * rarePool.length)];
-    pickedIds.add(pick.roomId);
-    options.push(pick);
-  } else if (weighted.filter(w => !pickedIds.has(w.roomId)).length > 0) {
-    const remaining = weighted.filter(w => !pickedIds.has(w.roomId));
-    const pick = remaining[Math.floor(rng() * remaining.length)];
-    pickedIds.add(pick.roomId);
-    options.push(pick);
+  // Slot 3: wild card — skew toward uncommon/rare, or resource rooms
+  remaining = weighted.filter(w => !pickedIds.has(w.roomId));
+  if (remaining.length > 0) {
+    const interesting = remaining.filter(w =>
+      w.room.rarity !== 'common' ||
+      FAMILY_EFFECTS[w.room.family]?.type === 'gem' ||
+      FAMILY_EFFECTS[w.room.family]?.type === 'key' ||
+      FAMILY_EFFECTS[w.room.family]?.type === 'lush'
+    );
+    const pool3 = interesting.length > 0 ? interesting : remaining;
+    const pick3 = pickWeighted(pool3);
+    pickedIds.add(pick3.roomId);
+    options.push(pick3);
   }
 
-  // Ensure at least one free option (cost 0)
+  // Ensure at least one free option — prefer one with more doors
   const hasFree = options.some(o => o.room.cost === 0);
   if (!hasFree && options.length > 0) {
     const freeOptions = weighted.filter(w => !pickedIds.has(w.roomId) && w.room.cost === 0);
     if (freeOptions.length > 0) {
-      const freeRoom = freeOptions[Math.floor(rng() * freeOptions.length)];
-      options[0] = freeRoom; // replace first slot
+      // Pick the free room with the most doors (weighted)
+      const bestFree = freeOptions.sort((a, b) => b.room.doorCount - a.room.doorCount);
+      const topDoors = bestFree[0].room.doorCount;
+      const topFree = bestFree.filter(f => f.room.doorCount === topDoors);
+      const freeRoom = topFree[Math.floor(rng() * topFree.length)];
+      // Replace the priciest slot
+      let worstIdx = 0;
+      for (let i = 1; i < options.length; i++) {
+        if (options[i].room.cost > options[worstIdx].room.cost) worstIdx = i;
+      }
+      options[worstIdx] = freeRoom;
     }
   }
 
-  // If we have fewer than 3, fill from whatever remains
+  // If player is resource-starved, guarantee a resource-giving room
+  const needsResources = state.run.gems === 0 && state.run.keys === 0 && placedCount < 6;
+  if (needsResources) {
+    const hasResourceRoom = options.some(o => {
+      const eff = FAMILY_EFFECTS[o.room.family];
+      return eff && (eff.type === 'gem' || eff.type === 'key' || eff.type === 'lush' || eff.type === 'food' || eff.type === 'energy');
+    });
+    if (!hasResourceRoom) {
+      const resourceRooms = weighted.filter(w => {
+        if (pickedIds.has(w.roomId)) return false;
+        const eff = FAMILY_EFFECTS[w.room.family];
+        return eff && (eff.type === 'gem' || eff.type === 'key' || eff.type === 'lush');
+      });
+      if (resourceRooms.length > 0) {
+        const rr = pickWeighted(resourceRooms);
+        // Replace the option with the fewest doors
+        let worstIdx = 0;
+        for (let i = 1; i < options.length; i++) {
+          if (options[i].room.doorCount < options[worstIdx].room.doorCount) worstIdx = i;
+        }
+        options[worstIdx] = rr;
+      }
+    }
+  }
+
+  // Fill to 3 if short
   while (options.length < DRAFT_SIZE) {
-    const remaining = weighted.filter(w => !pickedIds.has(w.roomId));
+    remaining = weighted.filter(w => !pickedIds.has(w.roomId));
     if (remaining.length === 0) break;
-    const pick = remaining[Math.floor(rng() * remaining.length)];
+    const pick = pickWeighted(remaining);
     pickedIds.add(pick.roomId);
     options.push(pick);
   }
@@ -408,8 +464,8 @@ function getRequiredDoors(c, r, state) {
     const nc = c + DIR[d][0];
     const nr = r + DIR[d][1];
     if (!inBounds(nc, nr)) {
-      required[d] = 0;
-      continue;
+      // Edge of grid — door here leads nowhere but is allowed
+      continue; // stays null (unconstrained)
     }
     const nk = cellKey(nc, nr);
     const neighbor = allPlaced[nk];
@@ -418,6 +474,7 @@ function getRequiredDoors(c, r, state) {
       const nDoors = rotateDoors(nRoom.doors, neighbor.rot);
       required[d] = nDoors[OPP[d]] ? 1 : 0;
     }
+    // empty in-bounds cell: stays null (unconstrained — door or wall both ok)
   }
   return required;
 }
@@ -432,11 +489,8 @@ export function canPlace(roomId, rot, c, r, state) {
   for (let d = 0; d < 4; d++) {
     if (required[d] === null) continue;
     if (required[d] === 1 && !doors[d]) return false;
-    if (required[d] === 0 && doors[d]) {
-      const nc = c + DIR[d][0];
-      const nr = r + DIR[d][1];
-      if (!inBounds(nc, nr)) return false;
-    }
+    // A placed neighbor has a wall facing us — we can't have a door there
+    if (required[d] === 0 && doors[d]) return false;
     if (required[d] === 1 && doors[d]) hasConnection = true;
   }
   return hasConnection;
