@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateBlueprint, newGame, newRun, act, getProgress, canPlace, cellKey, COLS, ROWS } from '../js/engine/engine.js';
+import { generateBlueprint, newGame, newRun, act, getProgress, canPlace, cellKey, COLS, ROWS, ENTRANCE_COL, ENTRANCE_ROW } from '../js/engine/engine.js';
 import { getRoomById, rotateDoors } from '../js/data/rooms.js';
 import { generateClue } from '../js/engine/clues.js';
 import { mulberry32 } from '../js/engine/rng.js';
@@ -29,7 +29,7 @@ describe('Blueprint Generation', () => {
   it('generates a valid blueprint', () => {
     const bp = generateBlueprint(12345);
     assert.ok(bp.cells.length > 10, `Should have >10 rooms, got ${bp.cells.length}`);
-    assert.ok(bp.cells.length <= 45, `Should have <=45 rooms`);
+    assert.ok(bp.cells.length <= 30, `Should have <=30 rooms`);
     assert.equal(bp.seed, 12345);
   });
 
@@ -49,8 +49,8 @@ describe('Blueprint Generation', () => {
     const bp = generateBlueprint(42);
     const entrance = bp.cells.find(c => c.roomId === 999);
     assert.ok(entrance, 'Should have entrance');
-    assert.equal(entrance.c, 2);
-    assert.equal(entrance.r, 6);
+    assert.equal(entrance.c, ENTRANCE_COL);
+    assert.equal(entrance.r, ENTRANCE_ROW);
   });
 
   it('all rooms are within bounds', () => {
@@ -61,7 +61,18 @@ describe('Blueprint Generation', () => {
     }
   });
 
-  it('all doors connect properly (no dangling doors into placed neighbors)', () => {
+  it('grid is 5x6', () => {
+    assert.equal(COLS, 5);
+    assert.equal(ROWS, 6);
+    assert.equal(ENTRANCE_ROW, 5);
+  });
+
+  it('has lockedCells in blueprint', () => {
+    const bp = generateBlueprint(42);
+    assert.ok(bp.lockedCells !== undefined);
+  });
+
+  it('all doors connect properly', () => {
     const bp = generateBlueprint(777);
     const placed = new Map();
     for (const cell of bp.cells) {
@@ -105,41 +116,58 @@ describe('Game Lifecycle', () => {
     assert.ok(game.clueJournal);
     assert.ok(game.meta);
     assert.equal(game.meta.runs, 0);
+    assert.deepEqual(game.unlockedDoors, {});
   });
 
-  it('starts a run', () => {
+  it('starts a run with correct resources', () => {
     let game = newGame(42);
     game = newRun(game);
     assert.ok(game.run);
+    assert.equal(game.run.phase, 'exploring');
+    assert.equal(game.run.energy, 14);
+    assert.equal(game.run.gems, 0);
+    assert.equal(game.run.keys, 0);
+    assert.equal(game.run.coins, 0);
+  });
+
+  it('has open doors after start', () => {
+    let game = newGame(42);
+    game = newRun(game);
+    assert.ok(game.run.openDoors.length > 0, 'Should have open doors');
+  });
+
+  it('can open a door to trigger drafting', () => {
+    let game = newGame(42);
+    game = newRun(game);
+    const door = game.run.openDoors[0];
+    game = act(game, { type: 'openDoor', c: door.c, r: door.r });
     assert.equal(game.run.phase, 'drafting');
-    assert.ok(game.run.steps > 0);
-    assert.ok(game.run.keys > 0);
-    assert.ok(game.run.draft.length > 0);
+    assert.ok(game.run.draftOptions);
+    assert.ok(game.run.draftOptions.length > 0);
+    assert.ok(game.run.draftOptions.length <= 3);
   });
 
-  it('can select a draft card', () => {
+  it('can draft a room from options', () => {
     let game = newGame(42);
     game = newRun(game);
-    game = act(game, { type: 'selectDraft', index: 0 });
-    assert.equal(game.run.phase, 'placing');
-    assert.equal(game.run.selectedDraft, 0);
-  });
+    const door = game.run.openDoors[0];
+    game = act(game, { type: 'openDoor', c: door.c, r: door.r });
 
-  it('can preview and cancel a placement', () => {
-    let game = newGame(42);
-    game = newRun(game);
-    game = act(game, { type: 'selectDraft', index: 0 });
-    assert.equal(game.run.phase, 'placing');
-    const openDoors = game.run.openDoors;
-    if (openDoors.length > 0) {
-      const { c, r } = openDoors[0];
-      const prev = act(game, { type: 'previewCell', c, r });
-      if (prev.run.phase === 'previewing') {
-        assert.ok(prev.run.preview);
-        const cancelled = act(prev, { type: 'cancelPreview' });
-        assert.equal(cancelled.run.phase, 'placing');
-        assert.equal(cancelled.run.preview, null);
+    // Find an affordable option
+    let pickedIdx = -1;
+    for (let i = 0; i < game.run.draftOptions.length; i++) {
+      const opt = game.run.draftOptions[i];
+      const room = getRoomById(opt.roomId);
+      if (room.cost <= game.run.gems) {
+        pickedIdx = i;
+        break;
       }
+    }
+
+    if (pickedIdx >= 0) {
+      game = act(game, { type: 'draftRoom', index: pickedIdx });
+      // Room was placed: phase should return to exploring (or ended/won)
+      assert.ok(['exploring', 'ended', 'won'].includes(game.run.phase), `Phase should advance, got ${game.run.phase}`);
     }
   });
 
@@ -149,21 +177,87 @@ describe('Game Lifecycle', () => {
     game = act(game, { type: 'endRun' });
     assert.equal(game.meta.runs, 1);
     assert.equal(game.run.phase, 'ended');
+    assert.ok(game.run.inkEarned >= 1, 'Should earn at least 1 ink');
   });
 });
 
-describe('Placement', () => {
-  it('entrance is auto-locked', () => {
+describe('Resource Economy', () => {
+  it('placement changes energy (costs 1, may gain from effects)', () => {
     let game = newGame(42);
     game = newRun(game);
-    const ek = cellKey(2, 6);
-    assert.ok(game.locked[ek], 'Entrance should be locked');
+    const initialEnergy = game.run.energy;
+    const door = game.run.openDoors[0];
+    game = act(game, { type: 'openDoor', c: door.c, r: door.r });
+
+    const freeOpt = game.run.draftOptions.findIndex(opt => {
+      const room = getRoomById(opt.roomId);
+      return room.cost === 0;
+    });
+
+    if (freeOpt >= 0) {
+      game = act(game, { type: 'draftRoom', index: freeOpt });
+      // Energy was spent (at least 1) but effects may restore some
+      // Just verify the placement happened (phase changed)
+      assert.ok(['exploring', 'ended', 'won'].includes(game.run.phase));
+    }
   });
 
-  it('has open doors after start', () => {
+  it('cannot draft room without enough gems', () => {
     let game = newGame(42);
     game = newRun(game);
-    assert.ok(game.run.openDoors.length > 0, 'Should have open doors');
+    assert.equal(game.run.gems, 0);
+
+    const door = game.run.openDoors[0];
+    game = act(game, { type: 'openDoor', c: door.c, r: door.r });
+
+    const costlyOpt = game.run.draftOptions.findIndex(opt => {
+      const room = getRoomById(opt.roomId);
+      return room.cost > 0;
+    });
+
+    if (costlyOpt >= 0) {
+      const before = game.run.energy;
+      const result = act(game, { type: 'draftRoom', index: costlyOpt });
+      assert.equal(result.run.energy, before, 'Energy should not change if cannot afford');
+      assert.equal(result.run.phase, 'drafting', 'Should stay in drafting phase');
+    }
+  });
+
+  it('ink earned includes base 1 plus locked rooms', () => {
+    let game = newGame(42);
+    game = newRun(game);
+    game = act(game, { type: 'endRun' });
+    assert.ok(game.run.inkEarned >= 1);
+    assert.equal(game.run.inkEarned, 1 + game.run.lockedThisRun + Math.floor((game.run.coins || 0) / 5));
+  });
+});
+
+describe('Locked Doors', () => {
+  it('unlocking a door costs a key', () => {
+    let game = newGame(42);
+    game = newRun(game);
+
+    // Give the player a key
+    game.run.keys = 1;
+
+    if (game.run.lockedDoors && game.run.lockedDoors.length > 0) {
+      const ld = game.run.lockedDoors[0];
+      game = act(game, { type: 'unlockDoor', c: ld.c, r: ld.r });
+      assert.equal(game.run.keys, 0);
+      assert.ok(game.unlockedDoors[cellKey(ld.c, ld.r)]);
+    }
+  });
+
+  it('cannot unlock without a key', () => {
+    let game = newGame(42);
+    game = newRun(game);
+    assert.equal(game.run.keys, 0);
+
+    if (game.run.lockedDoors && game.run.lockedDoors.length > 0) {
+      const ld = game.run.lockedDoors[0];
+      const result = act(game, { type: 'unlockDoor', c: ld.c, r: ld.r });
+      assert.equal(result.run.keys, 0);
+    }
   });
 });
 
@@ -190,53 +284,80 @@ describe('Clue System', () => {
     assert.ok(types.size >= 3, `Should have at least 3 clue types, got ${types.size}`);
   });
 
-  it('avoids duplicate clue types', () => {
-    const bp = generateBlueprint(42);
-    const cell = bp.cells.find(c => c.roomId !== 999);
-    const existing = [{ type: 'family', text: 'test' }];
-    const rng = mulberry32(1);
-    const clue = generateClue(cell, bp, rng, existing);
-    assert.notEqual(clue.type, 'family');
-  });
-
-  it('spending a key reveals a clue via act', () => {
+  it('clues cost 1 coin via act', () => {
     let game = newGame(42);
     game = newRun(game);
+    game.run.coins = 2;
+
     const bp = game.blueprint;
     const target = bp.cells.find(c => c.roomId !== 999);
     if (!target) return;
-    const keysBefore = game.run.keys;
+
     game = act(game, { type: 'tapClue', c: target.c, r: target.r });
     const key = cellKey(target.c, target.r);
-    assert.equal(game.run.keys, keysBefore - 1);
+    assert.equal(game.run.coins, 1);
     assert.ok(game.clueJournal[key]);
-    assert.ok(game.clueJournal[key].length === 1);
+    assert.equal(game.clueJournal[key].length, 1);
+  });
+
+  it('cannot buy clue without coins', () => {
+    let game = newGame(42);
+    game = newRun(game);
+    assert.equal(game.run.coins, 0);
+
+    const target = game.blueprint.cells.find(c => c.roomId !== 999);
+    if (!target) return;
+
+    game = act(game, { type: 'tapClue', c: target.c, r: target.r });
+    const key = cellKey(target.c, target.r);
+    assert.ok(!game.clueJournal[key] || game.clueJournal[key].length === 0);
   });
 });
 
 describe('Upgrades', () => {
   it('can buy an upgrade with enough ink', () => {
     let game = newGame(42);
-    game.meta.ink = 20;
-    game = act(game, { type: 'buyUpgrade', upgrade: 'steps' });
-    assert.equal(game.meta.upgrades.steps, 1);
+    game.meta.ink = 30;
+    game = act(game, { type: 'buyUpgrade', upgrade: 'energy' });
+    assert.equal(game.meta.upgrades.energy, 1);
     assert.equal(game.meta.ink, 15);
   });
 
   it('cannot buy upgrade without enough ink', () => {
     let game = newGame(42);
     game.meta.ink = 1;
-    game = act(game, { type: 'buyUpgrade', upgrade: 'steps' });
-    assert.equal(game.meta.upgrades.steps || 0, 0);
+    game = act(game, { type: 'buyUpgrade', upgrade: 'energy' });
+    assert.equal(game.meta.upgrades.energy || 0, 0);
   });
 
   it('cannot exceed max level', () => {
     let game = newGame(42);
     game.meta.ink = 100;
-    game.meta.upgrades.steps = 3;
-    game = act(game, { type: 'buyUpgrade', upgrade: 'steps' });
-    assert.equal(game.meta.upgrades.steps, 3);
+    game.meta.upgrades.energy = 2;
+    game = act(game, { type: 'buyUpgrade', upgrade: 'energy' });
+    assert.equal(game.meta.upgrades.energy, 2);
     assert.equal(game.meta.ink, 100);
+  });
+
+  it('extra energy applies to new run', () => {
+    let game = newGame(42);
+    game.meta.upgrades.energy = 1;
+    game = newRun(game);
+    assert.equal(game.run.energy, 16); // 14 base + 2
+  });
+
+  it('startGem gives 1 gem', () => {
+    let game = newGame(42);
+    game.meta.upgrades.startGem = 1;
+    game = newRun(game);
+    assert.equal(game.run.gems, 1);
+  });
+
+  it('startKey gives 1 key', () => {
+    let game = newGame(42);
+    game.meta.upgrades.startKey = 1;
+    game = newRun(game);
+    assert.equal(game.run.keys, 1);
   });
 });
 

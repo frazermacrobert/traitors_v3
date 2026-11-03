@@ -207,7 +207,6 @@ export function newRun(state) {
     roomPool,
     draftCell: null,
     draftOptions: null,
-    usedRoomIds: new Set(),
     lockedThisRun: 0,
     phase: 'exploring', // exploring | drafting | ended | won
     rngState: Math.floor(rng() * 2147483647),
@@ -468,10 +467,6 @@ function checkWin(state) {
 
 export function act(state, action) {
   const s = structuredClone(state);
-  // structuredClone loses Set, restore it
-  if (s.run && s.run.usedRoomIds && !(s.run.usedRoomIds instanceof Set)) {
-    s.run.usedRoomIds = new Set(s.run.usedRoomIds);
-  }
 
   switch (action.type) {
 
@@ -560,11 +555,6 @@ export function act(state, action) {
         }
       }
       s.run.lastItems = items.length > 0 ? items : null;
-
-      // Mark room used
-      if (s.run.usedRoomIds instanceof Set) {
-        s.run.usedRoomIds.add(roomId);
-      }
 
       // Clear draft state
       s.run.draftCell = null;

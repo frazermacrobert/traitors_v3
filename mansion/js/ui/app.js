@@ -20,11 +20,7 @@ const $ = (sel) => document.querySelector(sel);
 
 function save() {
   try {
-    const s = structuredClone(state);
-    if (s.run && s.run.usedRoomIds instanceof Set) {
-      s.run.usedRoomIds = [...s.run.usedRoomIds];
-    }
-    localStorage.setItem('mansion_save', JSON.stringify({ ...s, _v: SAVE_VERSION }));
+    localStorage.setItem('mansion_save', JSON.stringify({ ...state, _v: SAVE_VERSION }));
   } catch {}
   try { localStorage.setItem('mansion_ui', JSON.stringify({ screen: ui.screen })); } catch {}
 }
@@ -40,9 +36,6 @@ function load() {
         return false;
       }
       delete parsed._v;
-      if (parsed.run && parsed.run.usedRoomIds && Array.isArray(parsed.run.usedRoomIds)) {
-        parsed.run.usedRoomIds = new Set(parsed.run.usedRoomIds);
-      }
       state = parsed;
       return true;
     }
