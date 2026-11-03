@@ -3,6 +3,8 @@ import { getRoomById, rotateDoors, FAMILY_EFFECTS, FAMILY_COLORS } from '../data
 import { roomSvg, emptyCellSvg, miniCellSvg } from './svg.js';
 import * as sound from './sound.js';
 
+const SAVE_VERSION = 2;
+
 let state = null;
 let ui = {
   screen: 'title',
@@ -18,14 +20,24 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 function save() {
-  try { localStorage.setItem('mansion_save', JSON.stringify(state)); } catch {}
+  try { localStorage.setItem('mansion_save', JSON.stringify({ ...state, _v: SAVE_VERSION })); } catch {}
   try { localStorage.setItem('mansion_ui', JSON.stringify({ screen: ui.screen })); } catch {}
 }
 
 function load() {
   try {
     const s = localStorage.getItem('mansion_save');
-    if (s) { state = JSON.parse(s); return true; }
+    if (s) {
+      const parsed = JSON.parse(s);
+      if (!parsed._v || parsed._v < SAVE_VERSION) {
+        localStorage.removeItem('mansion_save');
+        localStorage.removeItem('mansion_ui');
+        return false;
+      }
+      delete parsed._v;
+      state = parsed;
+      return true;
+    }
   } catch {}
   return false;
 }
@@ -164,6 +176,7 @@ function renderRun() {
       <div class="top-actions">
         <button class="btn-icon" data-a="journal" title="Clue Journal">📓</button>
         <button class="btn-icon" data-a="endRunConfirm" title="End Run">🚪</button>
+        <button class="btn-icon" data-a="goHome" title="Main Menu">🏠</button>
         <button class="btn-icon help-btn" data-a="help">?</button>
       </div>
     </div>`;
@@ -516,6 +529,13 @@ function handleClick(e) {
 
     case 'endRunConfirm':
       if (confirm('End this run?')) dispatch({ type: 'endRun' });
+      break;
+
+    case 'goHome':
+      ui.screen = 'title';
+      ui.roomPopup = null;
+      ui.showHelp = false;
+      render();
       break;
 
     case 'nextRun': continueGame(); break;
