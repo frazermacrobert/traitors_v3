@@ -1,4 +1,4 @@
-import { getRoomById, rotateDoors, FAMILIES } from '../data/rooms.js';
+import { getRoomById, rotateDoors } from '../data/rooms.js';
 
 const DIR_NAMES = ['North', 'East', 'South', 'West'];
 const SHAPE_NAMES = { D: 'Dead End', I: 'Corridor', L: 'Corner', T: 'T-junction', X: 'Crossroads' };
@@ -12,8 +12,7 @@ export function generateClue(bpCell, blueprint, rng, existingClues) {
     { type: 'family', fn: () => familyClue(room) },
     { type: 'shape', fn: () => shapeClue(room) },
     { type: 'doors', fn: () => doorClue(doors) },
-    { type: 'cost', fn: () => costClue(room) },
-    { type: 'neighbor', fn: () => neighborClue(bpCell, blueprint) },
+    { type: 'neighbor', fn: () => neighborClue(bpCell, blueprint, rng) },
     { type: 'name', fn: () => nameClue(room) },
   ];
 
@@ -41,11 +40,7 @@ function doorClue(doors) {
   return `This cell faces **${dirs.join(' and ')}**`;
 }
 
-function costClue(room) {
-  return `The room here costs **${room.cost} Gem${room.cost !== 1 ? 's' : ''}**`;
-}
-
-function neighborClue(bpCell, blueprint) {
+function neighborClue(bpCell, blueprint, rng) {
   const DIR = [[0,-1],[1,0],[0,1],[-1,0]];
   const neighbors = [];
   for (const [dx, dy] of DIR) {
@@ -58,7 +53,7 @@ function neighborClue(bpCell, blueprint) {
     }
   }
   if (neighbors.length === 0) return familyClue(getRoomById(bpCell.roomId));
-  const name = neighbors[Math.floor(Math.random() * neighbors.length)];
+  const name = neighbors[Math.floor(rng() * neighbors.length)];
   return `This room is **adjacent to the ${name}**`;
 }
 
