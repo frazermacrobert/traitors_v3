@@ -46,6 +46,24 @@ export const FAMILY_COLORS = {
   Dungeon:     { color: '#c9d3cf', deep: '#4a5552' },
 };
 
+export const FAMILY_EFFECTS = {
+  Garden:      { type: 'freePlace', desc: 'No step cost if wrong' },
+  Library:     { type: 'clue', desc: 'Reveals a clue about a neighbor' },
+  Kitchen:     { type: 'steps', value: 2, desc: '+2 steps' },
+  Bedroom:     { type: 'keys', value: 1, desc: '+1 key' },
+  Gallery:     { type: 'clue', desc: 'Reveals a pattern clue' },
+  Study:       { type: 'clue', desc: 'Contains a safe puzzle' },
+  Hall:        { type: 'freePlace', desc: 'No step cost if wrong' },
+  Cellar:      { type: 'steps', value: 1, desc: '+1 step' },
+  Tower:       { type: 'oracle', desc: 'Reveals if placement is correct' },
+  Chapel:      { type: 'oracle', desc: 'Reveals if placement is correct' },
+  Armory:      { type: 'shield', desc: 'Next wrong placement is free' },
+  Treasury:    { type: 'ink', value: 1, desc: '+1 ink at run end' },
+  Ballroom:    { type: 'steps', value: 1, desc: '+1 step' },
+  Observatory: { type: 'clue', desc: 'Reveals a clue about a neighbor' },
+  Dungeon:     { type: 'keys', value: 1, desc: '+1 key' },
+};
+
 const ICONS = {
   Garden:      '🌿', Library:     '📚', Kitchen:     '🍳',
   Bedroom:     '🛏️', Gallery:     '🖼️', Study:       '📝',

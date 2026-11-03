@@ -1,14 +1,15 @@
-import { newGame, newRun, act, getProgress, getValidPlacements, getAllValidPlacements, canPlace, COLS, ROWS, ENTRANCE_COL, ENTRANCE_ROW, cellKey } from '../engine/engine.js';
-import { getRoomById, rotateDoors } from '../data/rooms.js';
+import { newGame, newRun, act, getProgress, getValidPlacements, getAllValidPlacements, canPlace, findBestRotation, COLS, ROWS, ENTRANCE_COL, ENTRANCE_ROW, cellKey } from '../engine/engine.js';
+import { getRoomById, rotateDoors, FAMILY_EFFECTS, FAMILY_COLORS } from '../data/rooms.js';
 import { roomSvg, emptyCellSvg, miniCellSvg } from './svg.js';
 import * as sound from './sound.js';
 
 let state = null;
 let ui = {
-  screen: 'title', // title | run | journal | runEnd | victory | shop
+  screen: 'title',
   journalCell: null,
   helpPage: 0,
   showHelp: false,
+  roomPopup: null,
   toast: null,
   toastTimer: null,
 };
@@ -40,13 +41,16 @@ function dispatch(action) {
   const prev = state;
   state = act(state, action);
 
-  if (action.type === 'place') {
-    const key = cellKey(action.c, action.r);
-    if (state.locked[key] && !prev.locked[key]) {
-      sound.playLock();
-      showToast('Perfect placement! Room locked in gold.');
-    } else if (state.run && state.run.placed[key]) {
-      sound.playPlace();
+  if (action.type === 'confirmPlace') {
+    const p = prev.run && prev.run.preview;
+    if (p) {
+      const key = cellKey(p.c, p.r);
+      if (state.locked[key] && !prev.locked[key]) {
+        sound.playLock();
+        showToast('Perfect placement! Room locked in gold.');
+      } else if (state.run && state.run.placed[key]) {
+        sound.playPlace();
+      }
     }
     if (state.run && state.run.phase === 'won') {
       sound.playWin();
@@ -118,6 +122,10 @@ function render() {
   if (ui.showHelp) {
     app.insertAdjacentHTML('beforeend', renderHelp());
   }
+
+  if (ui.roomPopup) {
+    app.insertAdjacentHTML('beforeend', renderRoomPopup());
+  }
 }
 
 function renderTitle() {
@@ -134,6 +142,7 @@ function renderTitle() {
       <div class="title-actions">
         <button class="btn btn-primary" data-a="newGame">New Puzzle</button>
         ${hasSave ? `<button class="btn" data-a="continue">Continue${progress ? ` (${progress.percent}%)` : ''}</button>` : ''}
+        <button class="btn btn-tutorial" disabled>Tutorial</button>
       </div>
       <button class="btn-icon help-btn" data-a="help">?</button>
     </div>`;
@@ -144,11 +153,14 @@ function renderRun() {
   const run = state.run;
   const progress = getProgress(state);
 
+  let shieldIndicator = run.shieldActive ? '<div class="stat shield-active"><span class="stat-icon">🛡️</span></div>' : '';
+
   let topBar = `
     <div class="top-bar">
       <div class="stat"><span class="stat-icon">👣</span><span class="stat-val">${run.steps}</span></div>
       <div class="stat"><span class="stat-icon">🔑</span><span class="stat-val">${run.keys}</span></div>
       <div class="stat"><span class="stat-icon">🏠</span><span class="stat-val">${progress.locked}/${progress.total}</span></div>
+      ${shieldIndicator}
       <div class="top-actions">
         <button class="btn-icon" data-a="journal" title="Clue Journal">📓</button>
         <button class="btn-icon" data-a="endRunConfirm" title="End Run">🚪</button>
@@ -156,13 +168,16 @@ function renderRun() {
       </div>
     </div>`;
 
-  const selectedRoom = run.phase === 'placing' && run.selectedDraft >= 0
+  const selectedRoom = (run.phase === 'placing' || run.phase === 'previewing') && run.selectedDraft >= 0
     ? getRoomById(run.draft[run.selectedDraft])
     : null;
-  const validCells = selectedRoom
+
+  const validCells = (run.phase === 'placing' && selectedRoom)
     ? getAllValidPlacements(selectedRoom.id, state)
     : [];
   const validSet = new Set(validCells.map(v => cellKey(v.c, v.r)));
+
+  const previewKey = run.preview ? cellKey(run.preview.c, run.preview.r) : null;
 
   let grid = '<div class="board">';
   for (let r = 0; r < ROWS; r++) {
@@ -174,14 +189,17 @@ function renderRun() {
       const isValid = validSet.has(key);
       const hasClue = (state.clueJournal[key] || []).length > 0;
       const bpCell = state.blueprint.cells.find(cell => cell.c === c && cell.r === r);
+      const isPreview = key === previewKey;
 
       let cellHtml;
       if (locked) {
         cellHtml = `<div class="cell locked" data-a="tapRoom" data-c="${c}" data-r="${r}">${roomSvg(locked.roomId, locked.rot, { locked: true })}</div>`;
+      } else if (isPreview && run.preview) {
+        cellHtml = `<div class="cell preview-ghost">${roomSvg(run.preview.roomId, run.preview.rot, { ghosted: true })}</div>`;
       } else if (runPlaced) {
         cellHtml = `<div class="cell placed" data-a="tapRoom" data-c="${c}" data-r="${r}">${roomSvg(runPlaced.roomId, runPlaced.rot, { ghosted: true })}</div>`;
       } else if (isValid) {
-        cellHtml = `<div class="cell valid-target" data-a="placeRoom" data-c="${c}" data-r="${r}">${emptyCellSvg({ openDoor: true, hasClue })}</div>`;
+        cellHtml = `<div class="cell valid-target" data-a="previewCell" data-c="${c}" data-r="${r}">${emptyCellSvg({ openDoor: true, hasClue })}</div>`;
       } else if (isOpen) {
         cellHtml = `<div class="cell open" data-c="${c}" data-r="${r}">${emptyCellSvg({ openDoor: true, hasClue })}</div>`;
       } else {
@@ -197,21 +215,38 @@ function renderRun() {
     draft += '<div class="draft-label">Pick a room:</div><div class="draft-cards">';
     for (let i = 0; i < run.draft.length; i++) {
       const room = getRoomById(run.draft[i]);
+      const effect = FAMILY_EFFECTS[room.family];
       draft += `<div class="draft-card" data-a="selectDraft" data-i="${i}">
         ${roomSvg(room.id, 0)}
         <div class="draft-name">${room.name}</div>
         <div class="draft-info">${room.family} · ${room.shape}</div>
+        ${effect ? `<div class="draft-effect">${effect.desc}</div>` : ''}
       </div>`;
     }
     draft += '</div>';
   } else if (run.phase === 'placing' && selectedRoom) {
+    const effect = FAMILY_EFFECTS[selectedRoom.family];
     draft += `<div class="placement-controls">
       <div class="selected-room">
         ${roomSvg(selectedRoom.id, 0)}
         <div class="draft-name">${selectedRoom.name}</div>
+        ${effect ? `<div class="draft-effect">${effect.desc}</div>` : ''}
       </div>
       <div class="placement-hint">Tap a highlighted cell</div>
       <button class="btn btn-secondary" data-a="cancelDraft">Back</button>
+    </div>`;
+  } else if (run.phase === 'previewing' && selectedRoom && run.preview) {
+    const effect = FAMILY_EFFECTS[selectedRoom.family];
+    draft += `<div class="preview-controls">
+      <div class="selected-room">
+        ${roomSvg(selectedRoom.id, run.preview.rot)}
+        <div class="draft-name">${selectedRoom.name}</div>
+        ${effect ? `<div class="draft-effect">${effect.desc}</div>` : ''}
+      </div>
+      <div class="preview-actions">
+        <button class="btn btn-primary" data-a="confirmPlace">Confirm</button>
+        <button class="btn btn-secondary" data-a="cancelPreview">Back</button>
+      </div>
     </div>`;
   }
   draft += '</div>';
@@ -257,7 +292,8 @@ function renderJournal() {
 
     if (locked) {
       const room = getRoomById(locked.roomId);
-      detail += `<div class="journal-room">${roomSvg(locked.roomId, locked.rot, { locked: true })}<div class="journal-room-name">${room.name}</div><div class="journal-room-family">${room.family} · Locked</div></div>`;
+      const effect = FAMILY_EFFECTS[room.family];
+      detail += `<div class="journal-room">${roomSvg(locked.roomId, locked.rot, { locked: true })}<div class="journal-room-name">${room.name}</div><div class="journal-room-family">${room.family}${effect ? ' · ' + effect.desc : ''} · Locked</div></div>`;
     } else if (clues.length > 0) {
       detail += '<div class="clue-list">';
       for (const clue of clues) {
@@ -352,12 +388,57 @@ function renderShop() {
     </div>`;
 }
 
+function renderRoomPopup() {
+  const { c, r } = ui.roomPopup;
+  const key = cellKey(c, r);
+  const locked = state.locked[key];
+  const runPlaced = state.run ? state.run.placed[key] : null;
+  const cell = locked || runPlaced;
+  if (!cell) return '';
+
+  const room = getRoomById(cell.roomId);
+  const effect = FAMILY_EFFECTS[room.family];
+  const clues = state.clueJournal[key] || [];
+  const colors = FAMILY_COLORS[room.family] || { color: '#999', deep: '#555' };
+  const canUseKey = state.run && state.run.keys > 0 && !locked;
+
+  let clueHtml = '';
+  if (clues.length > 0) {
+    clueHtml = '<div class="popup-clues">';
+    for (const clue of clues) {
+      clueHtml += `<div class="clue-entry"><span class="clue-type">${clue.type}</span><span class="clue-text">${clue.text}</span></div>`;
+    }
+    clueHtml += '</div>';
+  }
+
+  return `
+    <div class="modal-overlay" data-a="closePopup">
+      <div class="glass panel room-popup" onclick="event.stopPropagation()" style="border-color: ${colors.deep}">
+        <div class="popup-header" style="background: ${colors.color}20; border-bottom: 2px solid ${colors.deep}30">
+          <div class="popup-room-svg">${roomSvg(cell.roomId, cell.rot, { locked: !!locked })}</div>
+          <div class="popup-room-info">
+            <div class="popup-room-name">${room.name}</div>
+            <div class="popup-room-family">${room.icon} ${room.family}</div>
+            ${effect ? `<div class="popup-effect">${effect.desc}</div>` : ''}
+            ${locked ? '<div class="popup-locked-badge">Locked</div>' : '<div class="popup-temp-badge">Temporary</div>'}
+          </div>
+        </div>
+        <div class="popup-body">
+          <div class="popup-flavor">"${room.text}"</div>
+          ${clueHtml}
+          ${canUseKey ? `<button class="btn btn-small" data-a="useKey" data-c="${c}" data-r="${r}">Use Key (${state.run.keys} left)</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
 const HELP_PAGES = [
   { title: 'The Goal', text: 'A secret blueprint hides the <strong>perfect layout</strong> of this mansion. Discover it by building, room by room, across multiple runs.' },
-  { title: 'Building', text: 'Each run, <strong>draft 3 rooms, pick 1</strong>. Rotate it and place it on an open doorway. Doors must connect to the existing network.' },
+  { title: 'Building', text: 'Each turn, <strong>draft 3 rooms, pick 1</strong>. Tap a highlighted cell to preview, then confirm or go back.' },
   { title: 'Correctness', text: 'Place a room in the <strong>exact right position and rotation</strong> matching the secret blueprint and it <strong>locks in gold</strong> permanently — no step cost!' },
-  { title: 'Clues', text: 'Tap any placed room and spend a 🔑 to get a <strong>cryptic clue</strong> about what belongs in that cell. Clues persist in your journal between runs.' },
-  { title: 'Steps & Keys', text: 'You have limited <strong>Steps</strong> (wrong placements cost 1). <strong>Keys</strong> buy clues. Some rooms give bonus keys. Earn <strong>Ink</strong> each run to buy upgrades.' },
+  { title: 'Room Effects', text: 'Each room family has an <strong>effect</strong> when placed: Kitchens give steps, Bedrooms give keys, Chapels reveal if correct, Libraries reveal neighbor clues, and more.' },
+  { title: 'Clues', text: 'Tap any placed room to see its info. Spend a 🔑 to reveal a <strong>cryptic clue</strong> about what belongs in neighboring cells. Clues persist between runs.' },
+  { title: 'Steps & Keys', text: 'You have limited <strong>Steps</strong> (wrong placements cost 1). <strong>Keys</strong> buy clues. Earn <strong>Ink</strong> each run to buy upgrades.' },
 ];
 
 function renderHelp() {
@@ -391,12 +472,16 @@ function handleClick(e) {
       dispatch({ type: 'selectDraft', index: parseInt(el.dataset.i) });
       break;
 
-    case 'rotate':
-      dispatch({ type: 'rotate' });
+    case 'previewCell':
+      dispatch({ type: 'previewCell', c: parseInt(el.dataset.c), r: parseInt(el.dataset.r) });
       break;
 
-    case 'placeRoom':
-      dispatch({ type: 'place', c: parseInt(el.dataset.c), r: parseInt(el.dataset.r) });
+    case 'confirmPlace':
+      dispatch({ type: 'confirmPlace' });
+      break;
+
+    case 'cancelPreview':
+      dispatch({ type: 'cancelPreview' });
       break;
 
     case 'cancelDraft':
@@ -409,16 +494,25 @@ function handleClick(e) {
       break;
 
     case 'tapRoom': {
-      if (!state.run || state.run.keys <= 0) {
-        showToast('No keys left!');
-        render();
-        break;
-      }
+      const c = parseInt(el.dataset.c);
+      const r = parseInt(el.dataset.r);
+      ui.roomPopup = { c, r };
+      render();
+      break;
+    }
+
+    case 'useKey': {
+      ui.roomPopup = null;
       const c = parseInt(el.dataset.c);
       const r = parseInt(el.dataset.r);
       dispatch({ type: 'tapClue', c, r });
       break;
     }
+
+    case 'closePopup':
+      ui.roomPopup = null;
+      render();
+      break;
 
     case 'endRunConfirm':
       if (confirm('End this run?')) dispatch({ type: 'endRun' });

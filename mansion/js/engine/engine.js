@@ -1,14 +1,14 @@
 import { mulberry32, shuffle, pick as rngPick, pickN } from './rng.js';
-import { ROOMS, ENTRANCE, getRoomById, rotateDoors, getDoorsAt } from '../data/rooms.js';
+import { ROOMS, ENTRANCE, getRoomById, rotateDoors, getDoorsAt, FAMILY_EFFECTS } from '../data/rooms.js';
 import { generateClue } from './clues.js';
 
-const COLS = 5, ROWS = 9;
-const ENTRANCE_COL = 2, ENTRANCE_ROW = 8;
+const COLS = 5, ROWS = 7;
+const ENTRANCE_COL = 2, ENTRANCE_ROW = 6;
 const DIR = [[0,-1],[1,0],[0,1],[-1,0]]; // N,E,S,W
 const OPP = [2,3,0,1];
 
-const BASE_STEPS = 18;
-const BASE_KEYS = 3;
+const BASE_STEPS = 14;
+const BASE_KEYS = 2;
 const DRAFT_SIZE = 3;
 const MAX_CLUES_PER_CELL = 3;
 
@@ -49,7 +49,7 @@ export function generateBlueprint(seed) {
   }
 
   let attempts = 0;
-  const targetRooms = 25 + Math.floor(rng() * 6);
+  const targetRooms = 16 + Math.floor(rng() * 5);
 
   while (placed.size < targetRooms && openDoors.length > 0 && pool.length > 0 && attempts < 500) {
     attempts++;
@@ -187,11 +187,14 @@ export function newRun(state) {
     draft: null,
     selectedDraft: -1,
     placementRotation: 0,
+    preview: null,
     openDoors: [],
     rngState: Math.floor(rng() * 2147483647),
     lockedThisRun: 0,
     cluesThisRun: 0,
-    phase: 'drafting', // drafting | placing | tapClue | ended
+    treasuryBonus: 0,
+    shieldActive: false,
+    phase: 'drafting', // drafting | placing | previewing | ended | won
   };
 
   computeOpenDoors(s);
@@ -352,41 +355,57 @@ export function act(state, action) {
       if (idx < 0 || idx >= s.run.draft.length) return s;
       s.run.selectedDraft = idx;
       s.run.placementRotation = 0;
+      s.run.preview = null;
       s.run.phase = 'placing';
       return s;
     }
 
-    case 'rotate': {
-      if (!s.run || s.run.phase !== 'placing') return s;
-      s.run.placementRotation = (s.run.placementRotation + 1) % 4;
-      return s;
-    }
-
-    case 'place': {
+    case 'previewCell': {
       if (!s.run || s.run.phase !== 'placing') return s;
       const { c, r } = action;
       const roomId = s.run.draft[s.run.selectedDraft];
       const rot = findBestRotation(roomId, c, r, s);
-
       if (rot < 0 || !canPlace(roomId, rot, c, r, s)) return s;
+      s.run.preview = { c, r, roomId, rot };
+      s.run.phase = 'previewing';
+      return s;
+    }
+
+    case 'cancelPreview': {
+      if (!s.run || s.run.phase !== 'previewing') return s;
+      s.run.preview = null;
+      s.run.phase = 'placing';
+      return s;
+    }
+
+    case 'confirmPlace': {
+      if (!s.run || s.run.phase !== 'previewing' || !s.run.preview) return s;
+      const { c, r, roomId, rot } = s.run.preview;
+      if (!canPlace(roomId, rot, c, r, s)) return s;
 
       const key = cellKey(c, r);
       const isCorrect = checkCorrect(roomId, rot, c, r, s.blueprint);
+      const room = getRoomById(roomId);
+      const effect = FAMILY_EFFECTS[room.family];
 
       if (isCorrect) {
         s.locked[key] = { c, r, roomId, rot };
         s.run.lockedThisRun++;
       } else {
         s.run.placed[key] = { c, r, roomId, rot };
-        s.run.steps--;
+        const isFree = (effect && effect.type === 'freePlace') || s.run.shieldActive;
+        if (!isFree) s.run.steps--;
+        s.run.shieldActive = false;
       }
 
-      const room = getRoomById(roomId);
-      if (room.givesKey) s.run.keys += room.givesKey;
+      if (effect) {
+        applyRoomEffect(s, effect, room, c, r, isCorrect);
+      }
 
       s.run.draft.splice(s.run.selectedDraft, 1);
       s.run.selectedDraft = -1;
       s.run.placementRotation = 0;
+      s.run.preview = null;
       computeOpenDoors(s);
 
       if (checkWin(s)) {
@@ -467,12 +486,65 @@ export function act(state, action) {
   }
 }
 
+function applyRoomEffect(s, effect, room, c, r, isCorrect) {
+  switch (effect.type) {
+    case 'steps':
+      s.run.steps += effect.value;
+      break;
+    case 'keys':
+      s.run.keys += effect.value;
+      break;
+    case 'ink':
+      s.run.treasuryBonus += effect.value;
+      break;
+    case 'shield':
+      s.run.shieldActive = true;
+      break;
+    case 'oracle': {
+      const key = cellKey(c, r);
+      s.clueJournal[key] = s.clueJournal[key] || [];
+      s.clueJournal[key].push({
+        type: 'oracle',
+        text: isCorrect ? 'The spirits confirm: **this room is in its rightful place**.' : 'The spirits murmur: **this room does not belong here**.',
+      });
+      s.run.cluesThisRun++;
+      s.meta.totalClues++;
+      break;
+    }
+    case 'clue': {
+      const rng = mulberry32(s.seed * 11 + c * 50 + r * 7 + s.meta.runs);
+      const neighbors = [];
+      for (const [dc, dr] of DIR) {
+        const nc = c + dc, nr = r + dr;
+        if (!inBounds(nc, nr)) continue;
+        const nk = cellKey(nc, nr);
+        if (s.locked[nk]) continue;
+        const bpCell = s.blueprint.cells.find(cell => cell.c === nc && cell.r === nr);
+        if (bpCell) neighbors.push(bpCell);
+      }
+      if (neighbors.length > 0) {
+        const target = neighbors[Math.floor(rng() * neighbors.length)];
+        const targetRoom = getRoomById(target.roomId);
+        const tk = cellKey(target.c, target.r);
+        s.clueJournal[tk] = s.clueJournal[tk] || [];
+        const clue = generateClue(target, s.blueprint, rng, s.clueJournal[tk]);
+        s.clueJournal[tk].push(clue);
+        s.run.cluesThisRun++;
+        s.meta.totalClues++;
+      }
+      break;
+    }
+    case 'freePlace':
+      break;
+  }
+}
+
 function endRun(state) {
   const s = state;
   s.meta.runs++;
   s.meta.totalSteps += (BASE_STEPS + (s.meta.upgrades.steps || 0) * 2) - s.run.steps;
 
-  const inkEarned = 1 + s.run.lockedThisRun + Math.floor(s.run.cluesThisRun / 2);
+  const inkEarned = 1 + s.run.lockedThisRun + Math.floor(s.run.cluesThisRun / 2) + s.run.treasuryBonus;
   s.meta.ink += inkEarned;
 
   s.run.inkEarned = inkEarned;

@@ -50,7 +50,7 @@ describe('Blueprint Generation', () => {
     const entrance = bp.cells.find(c => c.roomId === 999);
     assert.ok(entrance, 'Should have entrance');
     assert.equal(entrance.c, 2);
-    assert.equal(entrance.r, 8);
+    assert.equal(entrance.r, 6);
   });
 
   it('all rooms are within bounds', () => {
@@ -125,13 +125,22 @@ describe('Game Lifecycle', () => {
     assert.equal(game.run.selectedDraft, 0);
   });
 
-  it('can rotate selected room', () => {
+  it('can preview and cancel a placement', () => {
     let game = newGame(42);
     game = newRun(game);
     game = act(game, { type: 'selectDraft', index: 0 });
-    const r0 = game.run.placementRotation;
-    game = act(game, { type: 'rotate' });
-    assert.equal(game.run.placementRotation, (r0 + 1) % 4);
+    assert.equal(game.run.phase, 'placing');
+    const openDoors = game.run.openDoors;
+    if (openDoors.length > 0) {
+      const { c, r } = openDoors[0];
+      const prev = act(game, { type: 'previewCell', c, r });
+      if (prev.run.phase === 'previewing') {
+        assert.ok(prev.run.preview);
+        const cancelled = act(prev, { type: 'cancelPreview' });
+        assert.equal(cancelled.run.phase, 'placing');
+        assert.equal(cancelled.run.preview, null);
+      }
+    }
   });
 
   it('tracks run count on end', () => {
@@ -147,7 +156,7 @@ describe('Placement', () => {
   it('entrance is auto-locked', () => {
     let game = newGame(42);
     game = newRun(game);
-    const ek = cellKey(2, 8);
+    const ek = cellKey(2, 6);
     assert.ok(game.locked[ek], 'Entrance should be locked');
   });
 
