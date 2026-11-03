@@ -1,5 +1,5 @@
 import { mulberry32, shuffle, pick as rngPick } from './rng.js';
-import { ROOMS, ENTRANCE, getRoomById, rotateDoors, FAMILY_EFFECTS, ITEM_TABLES } from '../data/rooms.js';
+import { ROOMS, ENTRANCE, SHAPES, getRoomById, rotateDoors, FAMILY_EFFECTS, ITEM_TABLES } from '../data/rooms.js';
 import { generateClue } from './clues.js';
 
 export const COLS = 5, ROWS = 6;
@@ -34,9 +34,9 @@ export function generateBlueprint(seed) {
   const rng = mulberry32(seed);
   const placed = new Map();
 
-  const entranceDoors = rotateDoors(ENTRANCE.doors, 2);
+  const entranceDoors = rotateDoors(ENTRANCE.doors, 0);
   placed.set(cellKey(ENTRANCE_COL, ENTRANCE_ROW), {
-    c: ENTRANCE_COL, r: ENTRANCE_ROW, roomId: ENTRANCE.id, rot: 2,
+    c: ENTRANCE_COL, r: ENTRANCE_ROW, roomId: ENTRANCE.id, rot: 0,
   });
 
   const available = shuffle(ROOMS.slice(), rng);
@@ -225,7 +225,7 @@ function computeDoors(state) {
 
   // Always include entrance
   const ek = cellKey(ENTRANCE_COL, ENTRANCE_ROW);
-  allPlaced.set(ek, { c: ENTRANCE_COL, r: ENTRANCE_ROW, roomId: ENTRANCE.id, rot: 2 });
+  allPlaced.set(ek, { c: ENTRANCE_COL, r: ENTRANCE_ROW, roomId: ENTRANCE.id, rot: 0 });
 
   // Permanently locked rooms
   for (const [key, cell] of Object.entries(state.locked)) {
@@ -293,7 +293,7 @@ function generateDraft(c, r, state) {
 
   if (fitting.length === 0) return null;
 
-  // Weight by depth and rarity
+  // Weight by depth, rarity, and door count
   const weighted = fitting.map(f => {
     let w = 1;
     const bpCell = state.blueprint.cells.find(cell => cell.c === c && cell.r === r);
@@ -308,6 +308,12 @@ function generateDraft(c, r, state) {
 
     // Prefer free rooms more often (cost 0 gems)
     if (f.room.cost === 0) w += 1;
+
+    // Strongly favor multi-door rooms to prevent early dead ends
+    const doorCount = f.room.doorCount || SHAPES[f.room.shape]?.count || 1;
+    w += (doorCount - 1) * 1.5;
+    // Extra boost for branching rooms near entrance
+    if (depth <= 2 && doorCount >= 3) w += 2;
 
     return { ...f, weight: w };
   });
@@ -393,7 +399,7 @@ function getRequiredDoors(c, r, state) {
 
   // Entrance
   const ek = cellKey(ENTRANCE_COL, ENTRANCE_ROW);
-  allPlaced[ek] = { c: ENTRANCE_COL, r: ENTRANCE_ROW, roomId: ENTRANCE.id, rot: 2 };
+  allPlaced[ek] = { c: ENTRANCE_COL, r: ENTRANCE_ROW, roomId: ENTRANCE.id, rot: 0 };
 
   Object.assign(allPlaced, state.locked);
   if (state.run) Object.assign(allPlaced, state.run.placed);

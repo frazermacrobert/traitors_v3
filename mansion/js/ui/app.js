@@ -197,7 +197,7 @@ function renderRun() {
       let cellHtml;
 
       if (isEntrance) {
-        cellHtml = `<div class="cell entrance" data-a="tapEntrance" data-c="${c}" data-r="${r}">${roomSvg(999, 2, { locked: true })}</div>`;
+        cellHtml = `<div class="cell entrance" data-a="tapEntrance" data-c="${c}" data-r="${r}">${roomSvg(999, 0, { locked: true })}</div>`;
       } else if (locked) {
         cellHtml = `<div class="cell locked" data-a="tapRoom" data-c="${c}" data-r="${r}">${roomSvg(locked.roomId, locked.rot, { locked: true })}</div>`;
       } else if (runPlaced) {
@@ -225,7 +225,7 @@ function renderRun() {
   if (ui.endRunPrompt) {
     endPrompt = `
       <div class="modal-overlay" data-a="cancelEndRun">
-        <div class="glass panel end-prompt" onclick="event.stopPropagation()">
+        <div class="glass panel end-prompt" data-a="noop">
           <h3>End This Run?</h3>
           <p>Return to the entrance and tally your progress.</p>
           <div class="prompt-actions">
@@ -432,7 +432,7 @@ function renderHelp() {
   const page = HELP_PAGES[ui.helpPage];
   return `
     <div class="modal-overlay" data-a="closeHelp">
-      <div class="glass panel help-panel" onclick="event.stopPropagation()">
+      <div class="glass panel help-panel" data-a="noop">
         <h3>${page.title}</h3>
         <p>${page.text}</p>
         <div class="help-nav">
