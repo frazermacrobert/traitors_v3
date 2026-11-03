@@ -14,6 +14,7 @@ let ui = {
   toast: null,
   toastTimer: null,
   endRunPrompt: false,
+  confirmNewGame: false,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -41,6 +42,13 @@ function load() {
     }
   } catch {}
   return false;
+}
+
+function clearSave() {
+  try {
+    localStorage.removeItem('mansion_save');
+    localStorage.removeItem('mansion_ui');
+  } catch {}
 }
 
 function showToast(msg, dur = 2500) {
@@ -132,6 +140,7 @@ function render() {
     case 'journal': app.innerHTML = renderJournal(); break;
     case 'runEnd': app.innerHTML = renderRunEnd(); break;
     case 'victory': app.innerHTML = renderVictory(); break;
+    case 'farewell': app.innerHTML = renderFarewell(); break;
     case 'shop': app.innerHTML = renderShop(); break;
     default: app.innerHTML = renderTitle();
   }
@@ -149,6 +158,21 @@ function renderTitle() {
   const hasSave = state !== null;
   const progress = hasSave ? getProgress(state) : null;
 
+  let confirmModal = '';
+  if (ui.confirmNewGame) {
+    confirmModal = `
+      <div class="modal-overlay" data-a="cancelNewGame">
+        <div class="glass panel end-prompt" data-a="noop">
+          <h3>Start over?</h3>
+          <p>This will erase your current progress (${progress ? progress.percent + '%' : '0%'}).</p>
+          <div class="prompt-actions">
+            <button class="btn btn-primary" data-a="confirmNewGame">New Game</button>
+            <button class="btn btn-secondary" data-a="cancelNewGame">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
   return `
     <div class="screen title-screen">
       <div class="title-header">
@@ -157,10 +181,11 @@ function renderTitle() {
         <p class="subtitle">Reconstruct the hidden blueprint</p>
       </div>
       <div class="title-actions">
-        <button class="btn btn-primary" data-a="newGame">New Puzzle</button>
-        ${hasSave ? `<button class="btn" data-a="continue">Continue${progress ? ` (${progress.percent}%)` : ''}</button>` : ''}
+        ${hasSave ? `<button class="btn btn-primary" data-a="continue">Continue${progress ? ` (${progress.percent}%)` : ''}</button>` : ''}
+        <button class="btn${hasSave ? ' btn-secondary' : ' btn-primary'}" data-a="newGame">New Game</button>
       </div>
       <button class="btn-icon help-btn" data-a="help">?</button>
+      ${confirmModal}
     </div>`;
 }
 
@@ -363,9 +388,10 @@ function renderRunEnd() {
           <div class="end-stat"><span>Total progress</span><strong>${progress.percent}%</strong></div>
         </div>
         <div class="end-actions">
-          <button class="btn btn-primary" data-a="nextRun">Next Run</button>
+          <button class="btn btn-primary" data-a="nextRun">Continue</button>
           <button class="btn" data-a="shop">Ink Shop (${state.meta.ink} ink)</button>
-          <button class="btn btn-secondary" data-a="journal">View Journal</button>
+          <button class="btn btn-secondary" data-a="callItADay">Call it a day</button>
+          <button class="btn btn-secondary" data-a="goHome">Quit to main menu</button>
         </div>
       </div>
     </div>`;
@@ -382,7 +408,28 @@ function renderVictory() {
           <div class="end-stat"><span>Runs taken</span><strong>${state.meta.runs}</strong></div>
           <div class="end-stat"><span>Total ink earned</span><strong>${state.meta.ink}</strong></div>
         </div>
-        <button class="btn btn-primary" data-a="newGame">New Puzzle</button>
+        <button class="btn btn-primary" data-a="newGame">New Game</button>
+      </div>
+    </div>`;
+}
+
+function renderFarewell() {
+  const progress = getProgress(state);
+  return `
+    <div class="screen end-screen">
+      <div class="glass panel">
+        <h2>Calling it a day</h2>
+        <p class="subtitle">Your progress will be lost. Are you sure?</p>
+        <div class="end-stats">
+          <div class="end-stat"><span>Runs completed</span><strong>${state.meta.runs}</strong></div>
+          <div class="end-stat"><span>Rooms locked</span><strong>${progress.locked}</strong></div>
+          <div class="end-stat"><span>Progress</span><strong>${progress.percent}%</strong></div>
+          <div class="end-stat"><span>Ink earned</span><strong>${state.meta.ink}</strong></div>
+        </div>
+        <div class="end-actions">
+          <button class="btn btn-primary" data-a="confirmFarewell">That's enough for now</button>
+          <button class="btn btn-secondary" data-a="goHome">Back to menu</button>
+        </div>
       </div>
     </div>`;
 }
@@ -452,7 +499,24 @@ function handleClick(e) {
   const a = el.dataset.a;
 
   switch (a) {
-    case 'newGame': startNewGame(); break;
+    case 'newGame':
+      if (state && ui.screen === 'title') {
+        ui.confirmNewGame = true;
+        render();
+      } else {
+        startNewGame();
+      }
+      break;
+
+    case 'confirmNewGame':
+      ui.confirmNewGame = false;
+      startNewGame();
+      break;
+
+    case 'cancelNewGame':
+      ui.confirmNewGame = false;
+      render();
+      break;
     case 'continue': continueGame(); break;
 
     case 'openDoor':
@@ -512,6 +576,18 @@ function handleClick(e) {
     }
 
     case 'nextRun': continueGame(); break;
+
+    case 'callItADay':
+      ui.screen = 'farewell';
+      render();
+      break;
+
+    case 'confirmFarewell':
+      state = null;
+      clearSave();
+      ui.screen = 'title';
+      render();
+      break;
 
     case 'journal':
       ui.screen = 'journal';
