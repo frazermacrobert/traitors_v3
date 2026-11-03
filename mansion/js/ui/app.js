@@ -1,4 +1,4 @@
-import { newGame, newRun, act, getProgress, getValidPlacements, canPlace, COLS, ROWS, ENTRANCE_COL, ENTRANCE_ROW, cellKey } from '../engine/engine.js';
+import { newGame, newRun, act, getProgress, getValidPlacements, getAllValidPlacements, canPlace, COLS, ROWS, ENTRANCE_COL, ENTRANCE_ROW, cellKey } from '../engine/engine.js';
 import { getRoomById, rotateDoors } from '../data/rooms.js';
 import { roomSvg, emptyCellSvg, miniCellSvg } from './svg.js';
 import * as sound from './sound.js';
@@ -159,9 +159,8 @@ function renderRun() {
   const selectedRoom = run.phase === 'placing' && run.selectedDraft >= 0
     ? getRoomById(run.draft[run.selectedDraft])
     : null;
-  const selectedRot = run.placementRotation;
   const validCells = selectedRoom
-    ? getValidPlacements(selectedRoom.id, selectedRot, state)
+    ? getAllValidPlacements(selectedRoom.id, state)
     : [];
   const validSet = new Set(validCells.map(v => cellKey(v.c, v.r)));
 
@@ -208,10 +207,10 @@ function renderRun() {
   } else if (run.phase === 'placing' && selectedRoom) {
     draft += `<div class="placement-controls">
       <div class="selected-room">
-        ${roomSvg(selectedRoom.id, selectedRot)}
+        ${roomSvg(selectedRoom.id, 0)}
         <div class="draft-name">${selectedRoom.name}</div>
       </div>
-      <button class="btn" data-a="rotate">Rotate ↻</button>
+      <div class="placement-hint">Tap a highlighted cell</div>
       <button class="btn btn-secondary" data-a="cancelDraft">Back</button>
     </div>`;
   }

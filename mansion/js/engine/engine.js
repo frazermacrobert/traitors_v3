@@ -312,6 +312,36 @@ export function getValidPlacements(roomId, rot, state) {
   return state.run.openDoors.filter(({ c, r }) => canPlace(roomId, rot, c, r, state));
 }
 
+export function getAllValidPlacements(roomId, state) {
+  if (!state.run) return [];
+  const seen = new Set();
+  const results = [];
+  for (let rot = 0; rot < 4; rot++) {
+    for (const { c, r } of state.run.openDoors) {
+      const key = cellKey(c, r);
+      if (seen.has(key)) continue;
+      if (canPlace(roomId, rot, c, r, state)) {
+        seen.add(key);
+        results.push({ c, r });
+      }
+    }
+  }
+  return results;
+}
+
+export function findBestRotation(roomId, c, r, state) {
+  const bpCell = state.blueprint.cells.find(cell => cell.c === c && cell.r === r);
+  for (let rot = 0; rot < 4; rot++) {
+    if (bpCell && bpCell.roomId === roomId && bpCell.rot === rot && canPlace(roomId, rot, c, r, state)) {
+      return rot;
+    }
+  }
+  for (let rot = 0; rot < 4; rot++) {
+    if (canPlace(roomId, rot, c, r, state)) return rot;
+  }
+  return -1;
+}
+
 export function act(state, action) {
   const s = structuredClone(state);
 
@@ -336,9 +366,9 @@ export function act(state, action) {
       if (!s.run || s.run.phase !== 'placing') return s;
       const { c, r } = action;
       const roomId = s.run.draft[s.run.selectedDraft];
-      const rot = s.run.placementRotation;
+      const rot = findBestRotation(roomId, c, r, s);
 
-      if (!canPlace(roomId, rot, c, r, s)) return s;
+      if (rot < 0 || !canPlace(roomId, rot, c, r, s)) return s;
 
       const key = cellKey(c, r);
       const isCorrect = checkCorrect(roomId, rot, c, r, s.blueprint);

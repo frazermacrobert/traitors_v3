@@ -28,6 +28,24 @@ export const FAMILIES = [
   'Armory', 'Treasury', 'Ballroom', 'Observatory', 'Dungeon'
 ];
 
+export const FAMILY_COLORS = {
+  Garden:      { color: '#7cc47a', deep: '#2f6b3a' },
+  Library:     { color: '#6f9fe0', deep: '#2c4f8a' },
+  Kitchen:     { color: '#f0b45a', deep: '#8a5a17' },
+  Bedroom:     { color: '#b693e0', deep: '#5b3a8c' },
+  Gallery:     { color: '#ec7062', deep: '#8a2a22' },
+  Study:       { color: '#6f9fe0', deep: '#2c4f8a' },
+  Hall:        { color: '#efe8d6', deep: '#6b6250' },
+  Cellar:      { color: '#c9d3cf', deep: '#4a5552' },
+  Tower:       { color: '#f6d861', deep: '#86701a' },
+  Chapel:      { color: '#b693e0', deep: '#5b3a8c' },
+  Armory:      { color: '#ec7062', deep: '#8a2a22' },
+  Treasury:    { color: '#f6d861', deep: '#86701a' },
+  Ballroom:    { color: '#f0b45a', deep: '#8a5a17' },
+  Observatory: { color: '#c9d3cf', deep: '#4a5552' },
+  Dungeon:     { color: '#c9d3cf', deep: '#4a5552' },
+};
+
 const ICONS = {
   Garden:      '🌿', Library:     '📚', Kitchen:     '🍳',
   Bedroom:     '🛏️', Gallery:     '🖼️', Study:       '📝',
