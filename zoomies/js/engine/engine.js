@@ -10,11 +10,51 @@ function idx(r, c) { return r * GRID + c; }
 function inBounds(r, c) { return r >= 0 && r < GRID && c >= 0 && c < GRID; }
 function isCorner(r, c) { return CORNERS.some(([cr, cc]) => cr === r && cc === c); }
 
+const OBJ_IDS = ['scenic','straight','explorer','treats','speed','long','social','brave','dodger','hopper'];
+
+const OBJ_DEFS = {
+  scenic:   { label: 'Scenic Route',     desc: 'Visit all 4 board edges',       pts: 5,
+    check(s, conn, connSet) { let edges = [false,false,false,false];
+      conn.forEach(([r,c]) => { if(r===0) edges[0]=true; if(r===5) edges[2]=true; if(c===0) edges[3]=true; if(c===5) edges[1]=true; });
+      return edges.every(Boolean); } },
+  straight: { label: 'Straight & Narrow', desc: 'Place 3 Lane cards in a single row', pts: 3,
+    check(s) { for(let r=0;r<GRID;r++){let run=0; for(let c=0;c<GRID;c++){const cell=s.board[idx(r,c)]; if(cell&&cell.icon==='lane'){run++;if(run>=3)return true}else run=0}} return false; } },
+  explorer: { label: 'Explorer',          desc: 'Place tiles in 5 different columns', pts: 3,
+    check(s, conn) { const cols = new Set(); conn.forEach(([,c]) => cols.add(c)); return cols.size >= 5; } },
+  treats:   { label: 'Treat Collector',   desc: 'Collect all 3 treats',           pts: 4,
+    check(s) { return (s.treats||[]).filter(t=>t.collected).length >= 3; } },
+  speed:    { label: 'Speed Run',         desc: 'Reach the beach in 10 turns or fewer', pts: 6,
+    check(s) { return s.endReason === 'win' && s.turn <= 10; } },
+  long:     { label: 'Long Walk',         desc: 'Build a connected path of 15+ tiles', pts: 4,
+    check(s, conn) { return conn.length >= 15; } },
+  social:   { label: 'Social Butterfly',  desc: 'Visit 3+ Dog Parks',             pts: 3,
+    check(s, conn, connSet) { let count=0; conn.forEach(([r,c])=>{const cell=s.board[idx(r,c)]; if(cell&&cell.icon==='dogpark')count++}); return count>=3; } },
+  brave:    { label: 'Brave Pup',         desc: 'Path passes adjacent to 2+ hazards', pts: 3,
+    check(s, conn) { let adj=0; const hSet=new Set(); conn.forEach(([r,c])=>{DIRS.forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc; if(inBounds(nr,nc)){const n=s.board[idx(nr,nc)]; if(n&&n.type==='hazard'&&!hSet.has(idx(nr,nc))){hSet.add(idx(nr,nc));adj++}}})}); return adj>=2; } },
+  dodger:   { label: 'Cat Dodger',        desc: 'Win with the Mean Cat active',   pts: 4,
+    check(s) { return s.endReason === 'win' && s.cat.active; } },
+  hopper:   { label: 'Corner Hopper',     desc: 'Path passes through 2+ corners', pts: 3,
+    check(s, conn) { let count=0; conn.forEach(([r,c])=>{if(isCorner(r,c))count++}); return count>=2; } },
+};
+
 export function newGame(seed) {
   const rng = mulberry32(seed);
   let beachR, beachC;
   do { beachR = rollD6(rng) - 1; beachC = rollD6(rng) - 1; } while (isCorner(beachR, beachC));
   const deck = shuffle(buildDeck(), rng);
+
+  const treats = [];
+  let attempts = 0;
+  while (treats.length < 3 && attempts < 50) {
+    const tr = rollD6(rng) - 1, tc = rollD6(rng) - 1;
+    attempts++;
+    if (isCorner(tr, tc)) continue;
+    if (tr === beachR && tc === beachC) continue;
+    if (treats.some(t => t.r === tr && t.c === tc)) continue;
+    treats.push({ r: tr, c: tc, collected: false });
+  }
+
+  const objIds = shuffle([...OBJ_IDS], rng).slice(0, 2);
 
   return {
     board: Array(GRID * GRID).fill(null),
@@ -32,6 +72,10 @@ export function newGame(seed) {
     endReason: null,
     seed,
     rngState: seed,
+    treats,
+    objectives: objIds,
+    fetchNext: false,
+    peekCards: null,
     log: [`Beach at (${beachR + 1}, ${beachC + 1}). Pick your starting corner!`],
   };
 }
@@ -45,6 +89,8 @@ export function act(state, action) {
     case 'chooseCorner': return doChooseCorner(s, action, rng);
     case 'pickCard': return doPickCard(s, action);
     case 'placeCard': return doPlaceCard(s, action);
+    case 'digHazard': return doDigHazard(s, action);
+    case 'skipDig': return doSkipDig(s);
     case 'skipTurn': return doSkipTurn(s);
     default: return s;
   }
@@ -66,8 +112,9 @@ function startTurn(s) {
   const rng = mulberry32(s.rngState);
   if (s.deck.length === 0) return endGame(s, 'deck', 'The deck is empty!');
 
+  const drawCount = Math.min(s.fetchNext ? 3 : 2, s.deck.length);
+  s.fetchNext = false;
   s.drawn = [];
-  const drawCount = Math.min(2, s.deck.length);
   let hazardsDone = [];
 
   let i = 0;
@@ -120,20 +167,20 @@ function resolveHazard(s, hazard, rng) {
   const icons = { squirrel: '🐿️', puddle: '💧' };
 
   if (hr === s.beach.r && hc === s.beach.c) {
-    s.log.push(`${icons[hazard.hazard]} ${hazard.label} rolled (${hr+1},${hc+1}) — landed on the BEACH!`);
-    endGame(s, 'beach_hazard', `${hazard.label} destroyed the beach! Game over!`);
+    s.log.push(`${icons[hazard.hazard]} ${hazard.name} rolled (${hr+1},${hc+1}) — landed on the BEACH!`);
+    endGame(s, 'beach_hazard', `${hazard.name} destroyed the beach! Game over!`);
     return 'gameover';
   }
   if (s.velvetPos && hr === s.velvetPos.r && hc === s.velvetPos.c) {
-    s.log.push(`${icons[hazard.hazard]} ${hazard.label} rolled (${hr+1},${hc+1}) — landed on Velvet!`);
-    endGame(s, 'player_hazard', `${hazard.label} landed right on Velvet! Game over!`);
+    s.log.push(`${icons[hazard.hazard]} ${hazard.name} rolled (${hr+1},${hc+1}) — landed on Velvet!`);
+    endGame(s, 'player_hazard', `${hazard.name} landed right on Velvet! Game over!`);
     return 'gameover';
   }
   if (s.board[idx(hr, hc)] === null && !(hr === s.beach.r && hc === s.beach.c)) {
     s.board[idx(hr, hc)] = { type: 'hazard', hazard: hazard.hazard, id: hazard.id };
-    s.log.push(`${icons[hazard.hazard]} ${hazard.label} at (${hr+1}, ${hc+1})! That space is blocked.`);
+    s.log.push(`${icons[hazard.hazard]} ${hazard.name} at (${hr+1}, ${hc+1})! That space is blocked.`);
   } else {
-    s.log.push(`${icons[hazard.hazard]} ${hazard.label} rolled (${hr+1},${hc+1}) — already occupied. Lucky!`);
+    s.log.push(`${icons[hazard.hazard]} ${hazard.name} rolled (${hr+1},${hc+1}) — already occupied. Lucky!`);
   }
   s.discard.push(hazard);
   return 'ok';
@@ -148,7 +195,7 @@ function doPickCard(s, a) {
   for (const c of s.drawn) s.discard.push(c);
   s.drawn = [];
 
-  if (!hasValidPlacement(s, s.picked)) return endGame(s, 'stuck', `Can't place ${s.picked.label} anywhere!`);
+  if (!hasValidPlacement(s, s.picked)) return endGame(s, 'stuck', `Can't place ${s.picked.name} anywhere!`);
   s.phase = 'place';
   return s;
 }
@@ -167,12 +214,23 @@ function doPlaceCard(s, a) {
   s.board[idx(r, c)] = {
     type: 'path', cardId: card.id, shape: card.shape,
     rot, doors: [...doors], icon: card.icon,
-    tunnel: false,
+    mod: card.mod || null,
   };
   s.velvetPos = { r, c };
   s.picked = null;
-  s.log.push(`Placed ${card.label} at (${r + 1}, ${c + 1})`);
+  s.log.push(`Placed ${card.name} at (${r + 1}, ${c + 1})`);
 
+  // Collect treats
+  if (s.treats) {
+    s.treats.forEach(t => {
+      if (!t.collected && t.r === r && t.c === c) {
+        t.collected = true;
+        s.log.push('🦴 Velvet found a treat!');
+      }
+    });
+  }
+
+  // Shuffle bonus (Roll Spots)
   if (card.bonus === 'shuffle') {
     const count = s.discard.length;
     if (count > 0) {
@@ -184,15 +242,58 @@ function doPlaceCard(s, a) {
     }
   }
 
+  // Fetch modifier — draw 3 next turn
+  if (card.mod && card.mod.type === 'fetch') {
+    s.fetchNext = true;
+    s.log.push('🎾 Fetch! Draw 3 cards next turn!');
+  }
+
+  // Peek modifier — show top 2 deck cards
+  if (card.mod && card.mod.type === 'peek') {
+    s.peekCards = s.deck.slice(0, 2).map(c => ({ name: c.name, shape: c.shape, icon: c.icon, hazard: c.hazard }));
+    s.log.push('👀 Peek! Velvet sniffs out the next 2 cards...');
+  }
+
   if (checkVictory(s)) return endGame(s, 'win', 'Velvet reached the BEACH! 🏖️');
 
+  // Dig modifier — enter dig phase
+  if (card.mod && card.mod.type === 'dig') {
+    s.phase = 'dig';
+    s.log.push('🦴 Dig! Pick an adjacent hazard to remove!');
+    return s;
+  }
+
+  return afterPlace(s);
+}
+
+function afterPlace(s) {
   if (s.cat.active) {
     moveCat(s);
     if (s.phase === 'end') return s;
   }
-
   s.turn++;
   return startTurn(s);
+}
+
+function doDigHazard(s, a) {
+  if (s.phase !== 'dig') return s;
+  const { r, c } = a;
+  if (!inBounds(r, c)) return s;
+  const cell = s.board[idx(r, c)];
+  if (!cell || cell.type !== 'hazard') return s;
+  // Must be adjacent to Velvet
+  const vr = s.velvetPos.r, vc = s.velvetPos.c;
+  const isAdj = DIRS.some(([dr,dc]) => vr+dr === r && vc+dc === c);
+  if (!isAdj) return s;
+  s.board[idx(r, c)] = null;
+  s.log.push(`Velvet dug up the hazard at (${r+1}, ${c+1})!`);
+  return afterPlace(s);
+}
+
+function doSkipDig(s) {
+  if (s.phase !== 'dig') return s;
+  s.log.push('Velvet skipped digging.');
+  return afterPlace(s);
 }
 
 function doSkipTurn(s) {
@@ -327,8 +428,39 @@ function checkVictory(s) {
 
 export function calculateScore(s) {
   const conn = getConnectedCells(s);
+  const connSet = new Set(conn.map(([r,c]) => idx(r,c)));
   const reached = s.endReason === 'win';
-  return { tiles: conn.length, total: reached ? conn.length : 0, reached };
+  if (!reached) return { tiles: conn.length, modBonus: 0, treatBonus: 0, objBonus: 0, total: 0, reached: false, rating: 0, stars: 0 };
+
+  let modBonus = 0;
+  conn.forEach(([r,c]) => {
+    const cell = s.board[idx(r,c)];
+    if (cell && cell.mod && cell.mod.type === 'pts') modBonus += cell.mod.val;
+  });
+
+  const treatBonus = (s.treats || []).filter(t => t.collected).length * 2;
+
+  let objBonus = 0;
+  const objResults = [];
+  (s.objectives || []).forEach(id => {
+    const def = OBJ_DEFS[id];
+    if (!def) return;
+    const met = def.check(s, conn, connSet);
+    objResults.push({ id, label: def.label, met, pts: def.pts });
+    if (met) objBonus += def.pts;
+  });
+
+  const total = conn.length + modBonus + treatBonus + objBonus;
+
+  let stars = 0, rating = '';
+  if (total >= 29) { stars = 5; rating = 'ULTIMATE ZOOMIE'; }
+  else if (total >= 21) { stars = 4; rating = 'Neighbourhood Legend'; }
+  else if (total >= 13) { stars = 3; rating = 'Trail Blazer'; }
+  else if (total >= 6) { stars = 2; rating = 'Park Regular'; }
+  else if (total >= 1) { stars = 1; rating = 'Good Boy'; }
+  else { stars = 0; rating = 'Lost Pup'; }
+
+  return { tiles: conn.length, modBonus, treatBonus, objBonus, total, reached, rating, stars, objResults };
 }
 
 function endGame(s, reason, msg) {
@@ -336,7 +468,7 @@ function endGame(s, reason, msg) {
   s.endReason = reason;
   s.score = calculateScore(s);
   s.log.push(msg);
-  if (s.score.total > 0) s.log.push(`Score: ${s.score.total} tiles!`);
+  if (s.score.total > 0) s.log.push(`Score: ${s.score.total} (${s.score.tiles} tiles + ${s.score.modBonus} mod + ${s.score.treatBonus} treats + ${s.score.objBonus} objectives) — ${s.score.rating}!`);
   else s.log.push('Score: 0 — Velvet didn\'t reach the beach.');
   return s;
 }
@@ -354,4 +486,4 @@ export function getValidSpots(s, card, rot) {
   return spots;
 }
 
-export { GRID, DIRS, OPP, idx, inBounds, isCorner, shuffle };
+export { GRID, DIRS, OPP, idx, inBounds, isCorner, shuffle, OBJ_DEFS };
